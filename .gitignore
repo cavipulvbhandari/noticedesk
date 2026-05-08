@@ -1,0 +1,51 @@
+# Node
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+.pnpm-store/
+.cache/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Logs
+*.log
+logs/
+
+# Local DB
+*.sqlite
+*.db
+pgdata/

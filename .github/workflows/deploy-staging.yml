@@ -1,0 +1,25 @@
+name: deploy-staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Auto-deploy to staging on merge to main; production promotion is manual
+# (see deploy-production.yml). Real deploy steps land once Sprint 1
+# infrastructure is provisioned and credentials are configured in repo
+# secrets.
+jobs:
+  deploy:
+    name: deploy api + web to staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: |
+          echo "Sprint 1: deploy hook is wired but no remote infrastructure yet."
+          echo "Once AWS creds + Vercel project are configured, this job will:"
+          echo "  1. terraform apply -var-file=envs/staging.tfvars"
+          echo "  2. push apps/api Docker image to ECR and update ECS service"
+          echo "  3. trigger Vercel deployment for apps/web"

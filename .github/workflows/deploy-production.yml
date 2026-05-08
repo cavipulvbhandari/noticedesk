@@ -1,0 +1,22 @@
+name: deploy-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (commit SHA or tag)"
+        required: true
+
+jobs:
+  deploy:
+    name: manual promote to production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Placeholder
+        run: |
+          echo "Sprint 1: production deploy is gated to manual workflow_dispatch."
+          echo "Real steps wire up alongside the staging workflow."

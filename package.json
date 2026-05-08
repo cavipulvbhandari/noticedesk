@@ -1,0 +1,16 @@
+{
+  "name": "noticedesk",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/shared"
+  ],
+  "scripts": {
+    "lint:web": "npm --workspace @noticedesk/web run lint",
+    "lint:shared": "npm --workspace @noticedesk/shared run lint --if-present",
+    "typecheck:web": "npm --workspace @noticedesk/web run typecheck",
+    "typecheck:shared": "npm --workspace @noticedesk/shared run typecheck",
+    "build:web": "npm --workspace @noticedesk/web run build"
+  }
+}
