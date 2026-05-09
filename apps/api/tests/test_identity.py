@@ -11,6 +11,7 @@ import pytest
 from app.services.identity import (
     extract_pan_from_gstin,
     extract_state_code_from_gstin,
+    get_state_name_from_code,
     reconcile_pan_gstin,
     validate_gstin_format,
     validate_pan_format,
@@ -102,8 +103,39 @@ class TestReconcilePanGstin:
     def test_mismatch(self) -> None:
         assert reconcile_pan_gstin("AAACX1234F", "27ZZZZZ1234F1Z5") is False
 
+    def test_brief_acceptance_match(self) -> None:
+        # The Sprint 1 brief calls out this exact assertion.
+        assert reconcile_pan_gstin("AAACA9876B", "27AAACA9876B1ZK") is True
+
+    def test_brief_acceptance_mismatch(self) -> None:
+        # Acme PAN against Sunteck's GSTIN — must not reconcile.
+        assert reconcile_pan_gstin("AAACA9876B", "27AABCS5678C1Z7") is False
+
     def test_invalid_pan(self) -> None:
         assert reconcile_pan_gstin("not-a-pan", "27AAACX1234F1Z5") is False
 
     def test_invalid_gstin(self) -> None:
         assert reconcile_pan_gstin("AAACX1234F", "not-a-gstin") is False
+
+
+class TestGetStateNameFromCode:
+    @pytest.mark.parametrize(
+        "code,name",
+        [
+            ("27", "Maharashtra"),
+            ("29", "Karnataka"),
+            ("24", "Gujarat"),
+            ("07", "Delhi"),
+            ("33", "Tamil Nadu"),
+        ],
+    )
+    def test_known(self, code: str, name: str) -> None:
+        assert get_state_name_from_code(code) == name
+
+    @pytest.mark.parametrize("code", ["00", "98", "abc", "", "1", "270"])
+    def test_unknown_or_malformed(self, code: str) -> None:
+        assert get_state_name_from_code(code) is None
+
+    def test_non_string(self) -> None:
+        assert get_state_name_from_code(None) is None  # type: ignore[arg-type]
+        assert get_state_name_from_code(27) is None  # type: ignore[arg-type]
