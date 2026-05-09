@@ -78,7 +78,11 @@ def install_error_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=_envelope("validation_error", "request validation failed", {"errors": exc.errors()}),
+            content=_envelope(
+                "validation_error",
+                "request validation failed",
+                {"errors": exc.errors()},
+            ),
         )
 
     @app.exception_handler(SQLAlchemyError)

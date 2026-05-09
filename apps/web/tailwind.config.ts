@@ -1,8 +1,7 @@
 import type { Config } from "tailwindcss";
 
-// Design tokens: navy / white / slate / gold.
-// These match the brand palette specified in the founders' brief; expand only
-// with explicit approval. Don't add ad-hoc colors in components.
+// Design tokens are the prototype's ground truth (noticedesk_prototype.html).
+// Don't introduce new color names without updating the prototype first.
 const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
@@ -13,39 +12,25 @@ const config: Config = {
     extend: {
       colors: {
         navy: {
-          DEFAULT: "#0B1F3A",
-          50: "#E6EAF1",
-          100: "#C6D0E0",
-          500: "#1E3A6B",
-          700: "#0B1F3A",
-          900: "#06122A",
-        },
-        slate: {
-          DEFAULT: "#475569",
-          50: "#F8FAFC",
-          100: "#F1F5F9",
-          200: "#E2E8F0",
-          400: "#94A3B8",
-          600: "#475569",
-          800: "#1E293B",
+          DEFAULT: "#1A2A4A",
+          deep: "#0F1A33",
         },
         gold: {
-          DEFAULT: "#C9A24A",
-          100: "#F6EBC8",
-          500: "#C9A24A",
-          700: "#967429",
+          DEFAULT: "#B08D57",
+          dark: "#8C6F44",
         },
+        cream: "#F5F0E8",
+        paper: "#FAF7F2",
+        ink: "#16181D",
+        slate: "#6B6E78",
+        success: "#2D6A4F",
+        alarm: "#9C2A2A",
+        warn: "#C68B3D",
       },
       fontFamily: {
-        sans: [
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
-          "sans-serif",
-        ],
-        serif: ["ui-serif", "Georgia", "serif"],
+        serif: ["var(--font-fraunces)", "Fraunces", "Georgia", "serif"],
+        sans: ["var(--font-dm-sans)", "DM Sans", "system-ui", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "JetBrains Mono", "monospace"],
       },
       borderRadius: {
         sm: "4px",

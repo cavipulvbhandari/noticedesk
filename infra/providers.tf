@@ -6,9 +6,9 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "noticedesk"
-      Environment = var.environment
-      ManagedBy   = "terraform"
+      Project       = "noticedesk"
+      Environment   = var.environment
+      ManagedBy     = "terraform"
       DataResidency = "in-mumbai"
     }
   }

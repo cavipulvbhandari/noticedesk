@@ -6,16 +6,15 @@ Roles match the user_role enum on the users table:
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Annotated
+from collections.abc import Awaitable, Callable
 
-from fastapi import Depends
 from sqlalchemy import text
 
 from app.core.errors import ForbiddenError, NotFoundError
 from app.middleware.tenant_context import CurrentContext, RequestContext
 
 Role = str
+RoleDependency = Callable[[RequestContext], Awaitable[RequestContext]]
 
 
 async def _load_role(ctx: RequestContext) -> Role:
@@ -27,10 +26,11 @@ async def _load_role(ctx: RequestContext) -> Role:
     ).first()
     if row is None:
         raise NotFoundError("user not found in tenant")
-    return row[0]
+    role: str = row[0]
+    return role
 
 
-def require_role(*allowed: Role):
+def require_role(*allowed: Role) -> RoleDependency:
     """Return a FastAPI dependency that 403s unless the user is in ``allowed``."""
 
     allowed_set = frozenset(allowed)
@@ -47,15 +47,15 @@ def require_role(*allowed: Role):
     return _dep
 
 
-def require_partner_or_above():
+def require_partner_or_above() -> RoleDependency:
     return require_role("partner", "managing_partner")
 
 
-def require_staff_or_above():
+def require_staff_or_above() -> RoleDependency:
     return require_role("partner", "managing_partner", "manager", "staff")
 
 
-__all__: Iterable[str] = (
+__all__ = (
     "require_role",
     "require_partner_or_above",
     "require_staff_or_above",
