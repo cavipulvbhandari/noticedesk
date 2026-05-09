@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./identity": "./src/identity.ts",
-    "./types": "./src/types.ts"
+    "./types": "./src/types.ts",
+    "./inbox": "./src/inbox.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

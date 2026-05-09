@@ -33,6 +33,32 @@ on the request's database connection. Without this, RLS hides every row.
 pytest
 ```
 
-Identity-utility tests run without a database. The integration tests under
-`tests/integration/` require `TEST_DATABASE_URL` and apply the migrations from
-`packages/db/migrations/` before running.
+Unit tests (identity utility, OCR factory, OCR stub provider, portal
+connectors, local storage, email recipient parsing) run without a database.
+
+Integration tests (`test_ocr_pipeline.py`, `test_upload_endpoint.py`,
+`test_email_inbound.py`) require `TEST_DATABASE_URL` pointing at a fresh
+Postgres with all migrations from `packages/db/migrations/` applied. They are
+skipped automatically when the env var isn't set.
+
+## Sprint 2 endpoints
+
+- `POST /v1/documents/upload` — multipart upload (PDF/JPG/PNG ≤ 50 MB),
+  computes SHA-256, stores in `Storage`, creates a `documents_inbox` row,
+  dispatches the OCR workflow.
+- `GET /v1/documents/inbox` — list inbox items for the current tenant.
+- `GET /v1/documents/inbox/{id}/ocr` — fetch OCR text for a document.
+- `POST /v1/email/inbound` — SES → SNS webhook. Shared-secret authenticated;
+  resolves `notices+{slug}@<domain>` to a tenant by `tenants.slug`.
+
+## Workflow backends
+
+`WORKFLOW_BACKEND=inline` runs the OCR pipeline in-process (default for dev
+and CI). `WORKFLOW_BACKEND=temporal` submits it to a Temporal cluster — see
+`app/workflows/temporal_defs.py` for the workflow + activity definitions.
+
+## OCR providers
+
+Selected by name from `OCR_PROVIDER_PRIMARY` and `OCR_PROVIDER_FALLBACK`.
+Known names: `google_doc_ai`, `azure_doc_intel`, `stub`. Switching primary is
+a config change, not a code change.

@@ -35,6 +35,22 @@ infra/
     staging.tfvars
 ```
 
+## Email-inbound (Sprint 2 wiring, future Terraform)
+
+Email-forward ingest needs three AWS resources that are not yet expressed
+in Terraform — the API endpoint shape is stable, the wiring lands once
+the production domain is provisioned:
+
+1. SES inbound rule on `notices+*@noticedesk.in` → SNS topic.
+2. SNS subscription posting to the API at `POST /v1/email/inbound` with
+   shared-secret header `X-Webhook-Secret` matching
+   `EMAIL_INBOUND_WEBHOOK_SECRET`.
+3. SES MX record + receipt-rule set in the same Mumbai region as the rest
+   of the stack.
+
+Until then, the webhook can be exercised end-to-end via the integration
+test in `apps/api/tests/test_email_inbound.py`.
+
 ## Apply
 
 ```bash

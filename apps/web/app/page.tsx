@@ -11,12 +11,20 @@ export default function Home() {
         Income Tax. This is the Sprint 1 scaffold; the working product begins
         in Sprint 2.
       </p>
-      <Link
-        href="/login"
-        className="inline-flex items-center rounded-md bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-500"
-      >
-        Sign in
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/login"
+          className="inline-flex items-center rounded-md bg-navy px-4 py-2 text-sm font-medium text-white hover:bg-navy-500"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/inbox"
+          className="inline-flex items-center rounded-md bg-slate-100 px-4 py-2 text-sm font-medium text-navy hover:bg-slate-200"
+        >
+          Open inbox
+        </Link>
+      </div>
     </main>
   );
 }
