@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production"]
 AuthProvider = Literal["clerk", "dev"]
@@ -28,15 +28,18 @@ class Settings(BaseSettings):
 
     sentry_dsn: str | None = None
 
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # NoDecode tells Pydantic-Settings to hand the raw env string to the
+    # validator below instead of JSON-decoding it at the source. Without
+    # this, ``ALLOWED_ORIGINS=http://localhost:3000`` (the .env.example
+    # default) crashes at startup because the colon-prefixed URL isn't
+    # valid JSON.
+    allowed_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def _parse_allowed_origins(cls, v: object) -> object:
-        # Accept either a JSON array or a plain comma-separated string in env,
-        # since the .env.example writes ALLOWED_ORIGINS=http://localhost:3000
-        # (no JSON brackets) and Pydantic-Settings v2 would otherwise insist
-        # on JSON for list-typed env vars.
         if v is None or isinstance(v, list):
             return v
         if isinstance(v, str):
@@ -44,7 +47,14 @@ class Settings(BaseSettings):
             if not s:
                 return []
             if s.startswith("["):
-                return v  # let Pydantic JSON-parse it
+                import json
+
+                try:
+                    parsed = json.loads(s)
+                except json.JSONDecodeError:
+                    parsed = None
+                if isinstance(parsed, list):
+                    return parsed
             return [item.strip() for item in s.split(",") if item.strip()]
         return v
 
