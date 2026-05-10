@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production"]
 AuthProvider = Literal["clerk", "dev"]
@@ -28,35 +28,30 @@ class Settings(BaseSettings):
 
     sentry_dsn: str | None = None
 
-    # NoDecode tells Pydantic-Settings to hand the raw env string to the
-    # validator below instead of JSON-decoding it at the source. Without
-    # this, ``ALLOWED_ORIGINS=http://localhost:3000`` (the .env.example
-    # default) crashes at startup because the colon-prefixed URL isn't
-    # valid JSON.
-    allowed_origins: Annotated[list[str], NoDecode] = Field(
-        default_factory=lambda: ["http://localhost:3000"]
+    # Stored as a plain string in env so Pydantic-Settings doesn't try to
+    # JSON-decode it (a list-typed env var would force JSON, which breaks
+    # the natural ``ALLOWED_ORIGINS=http://localhost:3000`` form). Parsed
+    # into a list via :meth:`allowed_origins`.
+    allowed_origins_raw: str = Field(
+        default="http://localhost:3000",
+        validation_alias="ALLOWED_ORIGINS",
     )
 
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def _parse_allowed_origins(cls, v: object) -> object:
-        if v is None or isinstance(v, list):
-            return v
-        if isinstance(v, str):
-            s = v.strip()
-            if not s:
-                return []
-            if s.startswith("["):
-                import json
+    @property
+    def allowed_origins(self) -> list[str]:
+        s = (self.allowed_origins_raw or "").strip()
+        if not s:
+            return []
+        if s.startswith("["):
+            import json
 
-                try:
-                    parsed = json.loads(s)
-                except json.JSONDecodeError:
-                    parsed = None
-                if isinstance(parsed, list):
-                    return parsed
-            return [item.strip() for item in s.split(",") if item.strip()]
-        return v
+            try:
+                parsed = json.loads(s)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(x) for x in parsed]
+        return [item.strip() for item in s.split(",") if item.strip()]
 
     # ---- Sprint 2: storage --------------------------------------------------
     storage_backend: StorageBackend = "local"
