@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production"]
@@ -29,6 +29,24 @@ class Settings(BaseSettings):
     sentry_dsn: str | None = None
 
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def _parse_allowed_origins(cls, v: object) -> object:
+        # Accept either a JSON array or a plain comma-separated string in env,
+        # since the .env.example writes ALLOWED_ORIGINS=http://localhost:3000
+        # (no JSON brackets) and Pydantic-Settings v2 would otherwise insist
+        # on JSON for list-typed env vars.
+        if v is None or isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if not s:
+                return []
+            if s.startswith("["):
+                return v  # let Pydantic JSON-parse it
+            return [item.strip() for item in s.split(",") if item.strip()]
+        return v
 
     # ---- Sprint 2: storage --------------------------------------------------
     storage_backend: StorageBackend = "local"
