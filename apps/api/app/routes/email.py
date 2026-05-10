@@ -155,9 +155,9 @@ def _extract_slug(recipient: str, expected_domain: str) -> str | None:
 
 async def _resolve_tenant_by_slug(slug: str) -> UUID | None:
     # tenants is not RLS-restricted, so we can look up without a tenant context.
-    from app.core.db import _SessionLocal  # local import; engine already configured
+    from app.core.db import session_local
 
-    async with _SessionLocal() as session:
+    async with session_local()() as session:
         row = (
             await session.execute(
                 text("SELECT tenant_id FROM tenants WHERE slug = :slug"),

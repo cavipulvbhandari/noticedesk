@@ -24,6 +24,13 @@ class WorkflowDispatcher(abc.ABC):
     async def submit_ocr(self, inbox_id: UUID, tenant_id: UUID) -> str:
         """Schedule an OCR run. Returns a workflow id (or local task id)."""
 
+    async def drain(self) -> None:
+        """Await any in-flight tasks. Used by tests to flush the inline dispatcher.
+
+        The Temporal dispatcher runs against an external cluster, so this is a
+        no-op for it.
+        """
+
 
 class InlineDispatcher(WorkflowDispatcher):
     """Runs the workflow as a fire-and-forget asyncio task in the same process.
@@ -33,12 +40,22 @@ class InlineDispatcher(WorkflowDispatcher):
     are managed by Temporal — see ADR-0003.
     """
 
+    def __init__(self) -> None:
+        # Per-loop task set so a test that creates a fresh event loop never
+        # inherits dangling tasks from a previous one (pytest-asyncio creates
+        # a new loop per test by default).
+        self._inflight: dict[int, set[asyncio.Task[None]]] = {}
+
+    def _bag_for_loop(self) -> set[asyncio.Task[None]]:
+        loop = asyncio.get_running_loop()
+        return self._inflight.setdefault(id(loop), set())
+
     async def submit_ocr(self, inbox_id: UUID, tenant_id: UUID) -> str:
         job = OcrJob(inbox_id=inbox_id, tenant_id=tenant_id)
+        bag = self._bag_for_loop()
         task = asyncio.create_task(self._run(job))
-        # Hold a reference so the task isn't garbage-collected mid-flight.
-        _INFLIGHT.add(task)
-        task.add_done_callback(_INFLIGHT.discard)
+        bag.add(task)
+        task.add_done_callback(bag.discard)
         return f"inline:{inbox_id}"
 
     async def _run(self, job: OcrJob) -> None:
@@ -47,8 +64,16 @@ class InlineDispatcher(WorkflowDispatcher):
         except Exception:  # noqa: BLE001
             logger.exception("inline_workflow_crashed", inbox_id=str(job.inbox_id))
 
-
-_INFLIGHT: set[asyncio.Task[None]] = set()
+    async def drain(self) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        bag = self._inflight.get(id(loop))
+        if not bag:
+            return
+        # Snapshot — _run's done-callback discards from the same set.
+        await asyncio.gather(*list(bag), return_exceptions=True)
 
 
 class TemporalDispatcher(WorkflowDispatcher):

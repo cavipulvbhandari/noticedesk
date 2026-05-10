@@ -41,21 +41,23 @@ def _env(monkeypatch, tmp_path: Path):
 
 
 async def _seed() -> tuple[uuid.UUID, uuid.UUID]:
-    from app.core.db import _SessionLocal
+    from app.core.db import session_local
 
-    async with _SessionLocal() as session:
+    suffix = uuid.uuid4().hex[:8]
+    async with session_local()() as session:
         tenant = (
             await session.execute(
-                text("INSERT INTO tenants (legal_name) VALUES ('Upload Firm') RETURNING tenant_id")
+                text("INSERT INTO tenants (legal_name) VALUES (:n) RETURNING tenant_id"),
+                {"n": f"Upload Firm {suffix}"},
             )
         ).scalar_one()
         user = (
             await session.execute(
                 text(
                     "INSERT INTO users (tenant_id, name, role, email) "
-                    "VALUES (:t, 'Tester', 'staff', 'tester@example.com') RETURNING user_id"
+                    "VALUES (:t, 'Tester', 'staff', :e) RETURNING user_id"
                 ),
-                {"t": tenant},
+                {"t": tenant, "e": f"tester-{suffix}@example.com"},
             )
         ).scalar_one()
         await session.commit()

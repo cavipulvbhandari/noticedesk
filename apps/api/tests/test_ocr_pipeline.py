@@ -185,13 +185,14 @@ class _AlwaysFailingProvider:
 
 
 async def _seed_tenant(name: str) -> uuid.UUID:
-    from app.core.db import _SessionLocal
+    from app.core.db import session_local
 
-    async with _SessionLocal() as session:
+    suffix = uuid.uuid4().hex[:8]
+    async with session_local()() as session:
         row = (
             await session.execute(
                 text("INSERT INTO tenants (legal_name) VALUES (:n) RETURNING tenant_id"),
-                {"n": name},
+                {"n": f"{name} {suffix}"},
             )
         ).first()
         await session.commit()

@@ -37,27 +37,32 @@ def _env(monkeypatch, tmp_path: Path):
     get_dispatcher.cache_clear()
 
 
-async def _seed_tenant_with_slug(slug: str = "mehta-associates") -> uuid.UUID:
-    from app.core.db import _SessionLocal
+async def _seed_tenant_with_slug(slug: str) -> uuid.UUID:
+    from app.core.db import session_local
 
-    async with _SessionLocal() as session:
+    async with session_local()() as session:
         tid = (
             await session.execute(
                 text(
                     "INSERT INTO tenants (legal_name, slug) VALUES (:n, :s) RETURNING tenant_id"
                 ),
-                {"n": "Mehta & Associates", "s": slug},
+                {"n": f"Mehta & Associates {slug}", "s": slug},
             )
         ).scalar_one()
         await session.commit()
         return uuid.UUID(str(tid))
 
 
+def _unique_slug(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
 @pytest.mark.asyncio
 async def test_email_creates_inbox_rows() -> None:
     from app.main import app
 
-    tenant_id = await _seed_tenant_with_slug("mehta-associates")
+    slug = _unique_slug("mehta")
+    tenant_id = await _seed_tenant_with_slug(slug)
     pdf = b"%PDF-1.4 stub" + b"\0" * 200
 
     transport = ASGITransport(app=app)
@@ -67,7 +72,7 @@ async def test_email_creates_inbox_rows() -> None:
             headers={"X-Webhook-Secret": "shh"},
             json={
                 "sender": "officer@gst.gov.in",
-                "recipient": "notices+mehta-associates@noticedesk.in",
+                "recipient": f"notices+{slug}@noticedesk.in",
                 "subject": "DRC-01 Issued",
                 "received_at": "2026-05-09T10:00:00Z",
                 "attachments": [
