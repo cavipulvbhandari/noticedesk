@@ -83,16 +83,30 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(SQLAlchemyError)
     async def _db_error(_request: Request, exc: SQLAlchemyError) -> JSONResponse:
+        # Surface the underlying message in development so contributors can
+        # see "relation documents_inbox does not exist" directly. In
+        # production we still return an opaque message — DB errors can
+        # contain row data we don't want on the wire.
+        from app.core.config import get_settings
+
+        details: dict[str, Any] = {}
+        if get_settings().environment == "development":
+            details = {"error": str(exc)}
         logger.error("db_error", error=str(exc))
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=_envelope("database_error", "database error"),
+            content=_envelope("database_error", "database error", details),
         )
 
     @app.exception_handler(Exception)
     async def _unhandled(_request: Request, exc: Exception) -> JSONResponse:
+        from app.core.config import get_settings
+
+        details: dict[str, Any] = {}
+        if get_settings().environment == "development":
+            details = {"error": str(exc), "type": type(exc).__name__}
         logger.error("unhandled_exception", error=str(exc))
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=_envelope("internal_error", "internal server error"),
+            content=_envelope("internal_error", "internal server error", details),
         )
