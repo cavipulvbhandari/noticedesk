@@ -10,6 +10,7 @@ from app.services.llm.anthropic import AnthropicProvider
 from app.services.llm.base import LLMError, LLMProvider
 from app.services.llm.openai import OpenAIProvider
 from app.services.llm.stub import StubLLMProvider
+from app.services.llm.stub_canned import lookup_canned_response
 
 KNOWN_LLM_PROVIDERS: frozenset[str] = frozenset({"anthropic", "openai", "stub"})
 
@@ -35,7 +36,11 @@ def _build_openai() -> LLMProvider:
 
 
 def _build_stub() -> LLMProvider:
-    return StubLLMProvider()
+    def _factory(system: str, user: str) -> str:
+        canned = lookup_canned_response(user)
+        return canned if canned is not None else "{}"
+
+    return StubLLMProvider(response_factory=_factory)
 
 
 _BUILDERS: dict[str, Callable[[], LLMProvider]] = {
