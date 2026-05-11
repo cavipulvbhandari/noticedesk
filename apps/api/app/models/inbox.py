@@ -41,6 +41,12 @@ class InboxItem(BaseModel):
     ingest_channel: IngestChannel
     parse_status: ParseStatus
     routing_status: RoutingStatus
+    routing_anomaly_details: dict[str, object] | None = None
+    parsed_to_notice_id: UUID | None = None
+    matched_client_name: str | None = None
+    matched_registration_label: str | None = None
+    document_type: str | None = None
+    parse_confidence: float | None = None
     uploaded_at: datetime
 
 

@@ -84,6 +84,20 @@ class Settings(BaseSettings):
     email_inbound_webhook_secret: str | None = None
     email_inbound_domain: str = "noticedesk.in"
 
+    # ---- Sprint 3: LLM providers -------------------------------------------
+    llm_provider_primary: str = "stub"
+    llm_provider_secondary: str | None = None
+
+    anthropic_api_key: str | None = None
+    anthropic_model: str = "claude-opus-4-7"
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o"
+
+    # Agents
+    document_parsing_prompt_version: str = "v1"
+    document_parsing_max_tokens: int = 4096
+    document_parsing_temperature: float = 0.0
+
     @property
     def is_dev_auth_allowed(self) -> bool:
         return self.environment == "development" and self.auth_provider == "dev"

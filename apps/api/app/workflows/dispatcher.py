@@ -1,8 +1,9 @@
 """Workflow dispatcher: Temporal in production, inline in dev/test.
 
-Both backends ultimately call :func:`run_ocr_pipeline`, so the workflow
-behavior is identical regardless of where it runs. The dispatcher choice is
-a config flag (``WORKFLOW_BACKEND``), not a code change.
+Both backends ultimately call :func:`run_ocr_pipeline` (and the Sprint 3
+parse-and-route pipeline), so the workflow behavior is identical regardless
+of where it runs. The dispatcher choice is a config flag
+(``WORKFLOW_BACKEND``), not a code change.
 """
 
 from __future__ import annotations
@@ -15,6 +16,10 @@ from uuid import UUID
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.workflows.document_ocr import OcrJob, run_ocr_pipeline
+from app.workflows.document_parsing_and_routing import (
+    ParseAndRouteJob,
+    run_parse_and_route,
+)
 
 logger = get_logger(__name__)
 
@@ -23,6 +28,10 @@ class WorkflowDispatcher(abc.ABC):
     @abc.abstractmethod
     async def submit_ocr(self, inbox_id: UUID, tenant_id: UUID) -> str:
         """Schedule an OCR run. Returns a workflow id (or local task id)."""
+
+    @abc.abstractmethod
+    async def submit_parse_and_route(self, inbox_id: UUID, tenant_id: UUID) -> str:
+        """Schedule the Sprint 3 parse-and-route pipeline."""
 
     async def drain(self) -> None:
         """Await any in-flight tasks. Used by tests to flush the inline dispatcher.
@@ -53,16 +62,39 @@ class InlineDispatcher(WorkflowDispatcher):
     async def submit_ocr(self, inbox_id: UUID, tenant_id: UUID) -> str:
         job = OcrJob(inbox_id=inbox_id, tenant_id=tenant_id)
         bag = self._bag_for_loop()
-        task = asyncio.create_task(self._run(job))
+        task = asyncio.create_task(self._run_ocr_then_parse(job))
         bag.add(task)
         task.add_done_callback(bag.discard)
         return f"inline:{inbox_id}"
 
-    async def _run(self, job: OcrJob) -> None:
+    async def submit_parse_and_route(self, inbox_id: UUID, tenant_id: UUID) -> str:
+        job = ParseAndRouteJob(inbox_id=inbox_id, tenant_id=tenant_id)
+        bag = self._bag_for_loop()
+        task = asyncio.create_task(self._run_parse_and_route(job))
+        bag.add(task)
+        task.add_done_callback(bag.discard)
+        return f"inline:parse:{inbox_id}"
+
+    async def _run_ocr_then_parse(self, job: OcrJob) -> None:
         try:
             await run_ocr_pipeline(job)
         except Exception:  # noqa: BLE001
             logger.exception("inline_workflow_crashed", inbox_id=str(job.inbox_id))
+            return
+        # Chain into Sprint 3: parse + route. The pipeline itself checks
+        # ocr_status='completed' before doing anything.
+        try:
+            await run_parse_and_route(
+                ParseAndRouteJob(inbox_id=job.inbox_id, tenant_id=job.tenant_id)
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("inline_parse_route_crashed", inbox_id=str(job.inbox_id))
+
+    async def _run_parse_and_route(self, job: ParseAndRouteJob) -> None:
+        try:
+            await run_parse_and_route(job)
+        except Exception:  # noqa: BLE001
+            logger.exception("inline_parse_route_crashed", inbox_id=str(job.inbox_id))
 
     async def drain(self) -> None:
         try:
@@ -109,6 +141,19 @@ class TemporalDispatcher(WorkflowDispatcher):
             DocumentOcrWorkflow.run,
             OcrJob(inbox_id=inbox_id, tenant_id=tenant_id).to_dict(),
             id=f"document-ocr-{inbox_id}",
+            task_queue=s.temporal_task_queue,
+        )
+        return handle.id
+
+    async def submit_parse_and_route(self, inbox_id: UUID, tenant_id: UUID) -> str:
+        client = await self._ensure_client()
+        s = get_settings()
+        from app.workflows.temporal_defs import DocumentParseAndRouteWorkflow
+
+        handle = await client.start_workflow(
+            DocumentParseAndRouteWorkflow.run,
+            ParseAndRouteJob(inbox_id=inbox_id, tenant_id=tenant_id).to_dict(),
+            id=f"document-parse-route-{inbox_id}",
             task_queue=s.temporal_task_queue,
         )
         return handle.id

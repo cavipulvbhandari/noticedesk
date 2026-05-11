@@ -39,6 +39,12 @@ export interface InboxItem {
   ingest_channel: IngestChannel;
   parse_status: ParseStatus;
   routing_status: RoutingStatus;
+  routing_anomaly_details: Record<string, unknown> | null;
+  parsed_to_notice_id: string | null;
+  matched_client_name: string | null;
+  matched_registration_label: string | null;
+  document_type: string | null;
+  parse_confidence: number | null;
   uploaded_at: string;
 }
 
@@ -77,4 +83,14 @@ export const OCR_STATUS_LABELS: Record<OcrStatus, string> = {
   in_progress: "OCR in progress",
   completed: "Ready for review",
   failed: "OCR failed",
+};
+
+export const ROUTING_STATUS_LABELS: Record<RoutingStatus, string> = {
+  pending: "Routing",
+  routed: "Routed",
+  client_not_found: "Client not found",
+  new_gst_registration_detected: "New GST registration",
+  pan_gstin_mismatch: "PAN / GSTIN mismatch",
+  no_identifier_found: "No identifier",
+  manual_assignment: "Manual assignment needed",
 };

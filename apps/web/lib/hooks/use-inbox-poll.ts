@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchInbox, type InboxList } from "@/lib/api";
 
 const POLL_INTERVAL_MS = 3000;
-const ACTIVE: ReadonlySet<string> = new Set(["pending", "in_progress"]);
+const ACTIVE_OCR: ReadonlySet<string> = new Set(["pending", "in_progress"]);
+const ACTIVE_PARSE: ReadonlySet<string> = new Set(["pending", "in_progress"]);
 
 export interface UseInboxPollResult {
   data: InboxList | null;
@@ -27,7 +28,11 @@ export function useInboxPoll(): UseInboxPollResult {
       if (cancelled.current) return;
       setData(next);
       setError(null);
-      const hasActive = next.items.some((i) => ACTIVE.has(i.ocr_status));
+      const hasActive = next.items.some(
+        (i) =>
+          ACTIVE_OCR.has(i.ocr_status) ||
+          (i.ocr_status === "completed" && ACTIVE_PARSE.has(i.parse_status)),
+      );
       if (hasActive) {
         timer.current = setTimeout(tick, POLL_INTERVAL_MS);
       }

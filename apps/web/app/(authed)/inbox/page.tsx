@@ -52,7 +52,14 @@ export default function InboxPage() {
       ) : (
         <ul className="mt-6 space-y-3">
           {items.map((item) => (
-            <InboxRow key={item.inbox_id} item={item} onView={setViewing} />
+            <InboxRow
+              key={item.inbox_id}
+              item={item}
+              onView={setViewing}
+              onResolved={() => {
+                void refresh();
+              }}
+            />
           ))}
         </ul>
       )}

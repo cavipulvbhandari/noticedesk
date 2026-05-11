@@ -55,3 +55,70 @@ export async function fetchOcrText(inboxId: string): Promise<OcrTextResponse> {
   if (!res.ok) throw new Error(`failed to load OCR text (${res.status})`);
   return (await res.json()) as OcrTextResponse;
 }
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const j = (await res.json()) as { error?: { message?: string } };
+      detail = j?.error?.message ?? "";
+    } catch {
+      // ignore
+    }
+    throw new Error(detail || `request failed (${res.status})`);
+  }
+  return (await res.json()) as T;
+}
+
+export interface ManualRouteBody {
+  client_id: string;
+  registration_id: string;
+  override_reason: string;
+}
+
+export function routeManually(
+  inboxId: string,
+  body: ManualRouteBody,
+): Promise<{ inbox_id: string; routing_status: string }> {
+  return postJson(`/api/route-manually/${inboxId}`, body);
+}
+
+export function rejectInbox(
+  inboxId: string,
+  reason: string,
+): Promise<{ status: string }> {
+  return postJson(`/api/reject/${inboxId}`, { reason });
+}
+
+export interface AddClientBody {
+  pan: string;
+  legal_name: string;
+  trade_name?: string | null;
+  entity_type?: string | null;
+  auto_route_inbox_id?: string | null;
+}
+
+export function addClient(body: AddClientBody): Promise<{ client_id: string }> {
+  return postJson("/api/clients", body);
+}
+
+export interface AddRegistrationBody {
+  client_id: string;
+  registration_type: "IT" | "GST";
+  identifier_value: string;
+  state_code?: string | null;
+  state_name?: string | null;
+  auto_route_inbox_id?: string | null;
+}
+
+export function addRegistration(
+  clientId: string,
+  body: AddRegistrationBody,
+): Promise<{ registration_id: string }> {
+  return postJson(`/api/registrations/${clientId}`, body);
+}

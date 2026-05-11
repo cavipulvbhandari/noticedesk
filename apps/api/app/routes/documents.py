@@ -125,11 +125,26 @@ async def list_inbox(ctx: CurrentContext, limit: int = 50, offset: int = 0) -> I
         await ctx.session.execute(
             text(
                 """
-                SELECT inbox_id, original_filename, file_size_bytes, page_count,
-                       mime_type, ocr_status, ocr_provider_used, ocr_error,
-                       ingest_channel, parse_status, routing_status, uploaded_at
-                FROM documents_inbox
-                ORDER BY uploaded_at DESC
+                SELECT
+                  di.inbox_id, di.original_filename, di.file_size_bytes, di.page_count,
+                  di.mime_type, di.ocr_status, di.ocr_provider_used, di.ocr_error,
+                  di.ingest_channel, di.parse_status, di.routing_status,
+                  di.routing_anomaly_details, di.parsed_to_notice_id,
+                  c.legal_name AS matched_client_name,
+                  CASE
+                    WHEN r.registration_type = 'GST' THEN
+                      COALESCE(r.state_name, r.state_code) || ' GST'
+                    WHEN r.registration_type = 'IT' THEN 'Income Tax'
+                    ELSE NULL
+                  END AS matched_registration_label,
+                  n.document_type,
+                  n.parse_confidence,
+                  di.uploaded_at
+                FROM documents_inbox di
+                LEFT JOIN notices n ON n.notice_id = di.parsed_to_notice_id
+                LEFT JOIN clients c ON c.client_id = n.client_id
+                LEFT JOIN client_registrations r ON r.registration_id = n.registration_id
+                ORDER BY di.uploaded_at DESC
                 LIMIT :limit OFFSET :offset
                 """
             ),
@@ -152,7 +167,13 @@ async def list_inbox(ctx: CurrentContext, limit: int = 50, offset: int = 0) -> I
             ingest_channel=r[8],
             parse_status=r[9],
             routing_status=r[10],
-            uploaded_at=r[11],
+            routing_anomaly_details=r[11],
+            parsed_to_notice_id=r[12],
+            matched_client_name=r[13],
+            matched_registration_label=r[14],
+            document_type=r[15],
+            parse_confidence=float(r[16]) if r[16] is not None else None,
+            uploaded_at=r[17],
         )
         for r in rows
     ]

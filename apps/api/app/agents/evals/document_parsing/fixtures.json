@@ -1,0 +1,51 @@
+[
+  {
+    "id": "asmt10-maharashtra-fy22-23",
+    "expected_document_type": "ASMT-10",
+    "expected_law": "GST",
+    "expected_gstin": "27AAACA9876B1Z5",
+    "expected_pan_from_gstin": "AAACA9876B",
+    "expected_fy": "2022-23",
+    "ocr_text": "FORM GST ASMT-10\n[See rule 99(1)]\nReference No.: ASMT-10/2024/0001  Date: 12-09-2024\n\nTo,\nAcme Industries Private Limited\nGSTIN: 27AAACA9876B1Z5\nReg. Address: ...\n\nSubject: Notice for intimation of discrepancies in the return after scrutiny for the period from 01-04-2022 to 31-03-2023 (FY 2022-23).\n\nIn exercise of the powers conferred under section 61 of the CGST Act, the undersigned has noticed the following discrepancies in your return:\n  1. ITC claimed in GSTR-3B does not match GSTR-2A.\n\nYou are requested to file a reply within 30 days, i.e. on or before 30-09-2024.\n\n-- State Tax Officer, Mumbai Ward 5"
+  },
+  {
+    "id": "drc01a-pune-mismatch-trigger",
+    "expected_document_type": "DRC-01A",
+    "expected_law": "GST",
+    "expected_gstin": "27AAQCS3456P1ZF",
+    "expected_pan_from_gstin": "AAQCS3456P",
+    "expected_fy": "2023-24",
+    "ocr_text": "FORM GST DRC-01A\n[See rule 142(1A)]\nIntimation of liability under section 73(5)\n\nGSTIN: 27AAQCS3456P1ZF\nLegal Name: Sunrise Papers Pvt Ltd\nFY: 2023-24\n\nIt is observed that there is a short payment of tax. You are intimated to discharge the liability or submit a reply within 7 days. The total amount payable is INR 1,84,500."
+  },
+  {
+    "id": "it-142-1-ay-2023-24",
+    "expected_document_type": "IT_142(1)",
+    "expected_law": "IT",
+    "expected_pan": "AAACA9876B",
+    "expected_ay": "2023-24",
+    "ocr_text": "INCOME TAX DEPARTMENT\nNotice u/s 142(1) of the Income Tax Act, 1961\n\nPAN: AAACA9876B\nName: Acme Industries Private Limited\nAY: 2023-24\nDIN: ITBA/AST/F/142(1)/2024-25/123456789\nDate of issue: 14-08-2024\n\nYou are required to furnish the following information on or before 28-08-2024:\n  - Audited financial statements for FY 2022-23\n  - Bank statements for all accounts maintained during FY 2022-23\n  - Reconciliation of turnover with GST returns"
+  },
+  {
+    "id": "it-148-reassessment",
+    "expected_document_type": "IT_148_148A",
+    "expected_law": "IT",
+    "expected_pan": "AAACC2345D",
+    "expected_ay": "2019-20",
+    "ocr_text": "NOTICE under Section 148 of the Income Tax Act, 1961\n\nName: Cinnamon Bakery LLP  PAN: AAACC2345D\nA.Y.: 2019-20\nDate: 21-03-2024\n\nWhereas I have reason to believe that your income chargeable to tax for the AY 2019-20 has escaped assessment within the meaning of section 147, this notice is issued in accordance with the proviso to section 148A."
+  },
+  {
+    "id": "mismatch-pan-vs-gstin-trigger",
+    "expected_document_type": "DRC-01",
+    "expected_law": "GST",
+    "expected_routing_status": "pan_gstin_mismatch",
+    "expected_gstin": "27AAACA9876B1Z5",
+    "expected_pan": "ZZZZZ9999Z",
+    "ocr_text": "FORM GST DRC-01 — Show Cause Notice\n\nGSTIN: 27AAACA9876B1Z5\nPAN: ZZZZZ9999Z   (DELIBERATELY MISMATCHED)\nFY: 2022-23\n\nThis notice is issued for tax demand under section 74."
+  },
+  {
+    "id": "junk-needs-review",
+    "expected_document_type": "needs_review",
+    "expected_law": null,
+    "ocr_text": "Hello! This is a letter from the bank about your overdraft. Please contact the relationship manager. -- ICICI Bank"
+  }
+]
