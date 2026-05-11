@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -372,6 +373,17 @@ async def _match_or_create_matter(
     return inserted[0]
 
 
+def _coerce_date(value: Any) -> date | None:
+    # asyncpg's prepared-statement codec rejects strings where postgres infers
+    # DATE — must be a datetime.date. Sanitiser upstream already validates
+    # ISO format, so this is a last-mile encoding hop.
+    if value is None or isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        return date.fromisoformat(value)
+    return None
+
+
 async def _create_notice(
     session: AsyncSession,
     *,
@@ -420,15 +432,15 @@ async def _create_notice(
                 "doc_type": parsed.get("document_type"),
                 "notice_number": parsed.get("notice_number"),
                 "din": parsed.get("din_or_rfn"),
-                "issue_date": parsed.get("issue_date"),
-                "receipt_date": parsed.get("receipt_date"),
-                "due_date": parsed.get("due_date"),
+                "issue_date": _coerce_date(parsed.get("issue_date")),
+                "receipt_date": _coerce_date(parsed.get("receipt_date")),
+                "due_date": _coerce_date(parsed.get("due_date")),
                 "authority": parsed.get("authority"),
                 "fy": parsed.get("financial_year"),
                 "ay": parsed.get("assessment_year"),
                 "issues": json.dumps(parsed.get("issues") or []),
                 "docs": json.dumps(parsed.get("documents_required") or []),
-                "hearing_date": parsed.get("hearing_date"),
+                "hearing_date": _coerce_date(parsed.get("hearing_date")),
                 "demand_amount": parsed.get("demand_amount"),
                 "ingest_channel": ingest_channel,
                 "inbox_id": str(source_inbox_id),
