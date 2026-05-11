@@ -1,15 +1,18 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=DM+Sans:opsz,wght@9..40,300..800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-bg: 255 255 255;
-  --color-fg: 11 31 58;
+  /* Cream paper background + ink foreground, ported from the prototype. */
+  --color-bg: 245 240 232;
+  --color-fg: 22 24 29;
 }
 
 html,
 body {
   background-color: rgb(var(--color-bg));
   color: rgb(var(--color-fg));
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: "ss01", "cv11", "kern", "liga";
 }

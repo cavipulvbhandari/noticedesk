@@ -100,11 +100,37 @@ export interface AddClientBody {
   legal_name: string;
   trade_name?: string | null;
   entity_type?: string | null;
+  industry?: string | null;
   auto_route_inbox_id?: string | null;
 }
 
 export function addClient(body: AddClientBody): Promise<{ client_id: string }> {
   return postJson("/api/clients", body);
+}
+
+export interface ClientSummary {
+  client_id: string;
+  pan: string;
+  legal_name: string;
+  trade_name: string | null;
+  entity_type: string | null;
+  industry: string | null;
+  gst_count: number;
+  gst_state_codes: string[];
+  active_it_count: number;
+  active_gst_count: number;
+  earliest_open_due_date: string | null;
+}
+
+export interface ClientList {
+  clients: ClientSummary[];
+  total: number;
+}
+
+export async function fetchClients(): Promise<ClientList> {
+  const res = await fetch("/api/clients", { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load clients (${res.status})`);
+  return (await res.json()) as ClientList;
 }
 
 export interface AddRegistrationBody {
