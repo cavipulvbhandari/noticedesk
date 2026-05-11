@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     environment: Environment = "development"
     log_level: str = "INFO"
 
-    database_url: str = "postgresql+asyncpg://noticedesk:noticedesk@localhost:5432/noticedesk_dev"
+    # Non-superuser role so RLS actually filters. The 'noticedesk' superuser
+    # is reserved for migrations and schema tests — superusers bypass RLS
+    # even with FORCE.
+    database_url: str = "postgresql+asyncpg://noticedesk_app:noticedesk_app@localhost:5432/noticedesk_dev"
 
     auth_provider: AuthProvider = "dev"
     clerk_jwks_url: str | None = None

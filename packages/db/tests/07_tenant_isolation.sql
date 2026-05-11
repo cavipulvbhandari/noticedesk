@@ -1,13 +1,10 @@
 -- 07_tenant_isolation.sql — RLS isolates rows between tenants.
 --
 -- Postgres superusers bypass RLS unless FORCE ROW LEVEL SECURITY is set on
--- the table (which migration 0009 does). We additionally `SET LOCAL ROLE` to a
--- non-bypass role to mirror what application connections see in production.
-
-CREATE ROLE noticedesk_app NOLOGIN;
-GRANT USAGE ON SCHEMA public TO noticedesk_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO noticedesk_app;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO noticedesk_app;
+-- the table (which migration 0009 does). Even with FORCE, superusers still
+-- bypass — that's a Postgres invariant. We therefore `SET LOCAL ROLE` to the
+-- non-superuser ``noticedesk_app`` (created by migration 0012) to mirror
+-- what application connections see in production.
 
 -- Seed two tenants, each with a client, as the privileged role (bypassing RLS for setup).
 INSERT INTO tenants (legal_name) VALUES ('Firm A') RETURNING tenant_id AS tenant_a \gset

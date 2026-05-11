@@ -2,12 +2,8 @@
 --
 -- Mirrors the role-switch pattern in 07_tenant_isolation.sql so that RLS is
 -- actually enforced (FORCE ROW LEVEL SECURITY applies to table owners but
--- not to superusers).
-
-CREATE ROLE noticedesk_app NOLOGIN;
-GRANT USAGE ON SCHEMA public TO noticedesk_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO noticedesk_app;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO noticedesk_app;
+-- not to superusers). The ``noticedesk_app`` role is created by migration
+-- 0012.
 
 INSERT INTO tenants (legal_name) VALUES ('Acme Firm') RETURNING tenant_id AS tenant_a \gset
 INSERT INTO tenants (legal_name) VALUES ('Other Firm') RETURNING tenant_id AS tenant_b \gset
