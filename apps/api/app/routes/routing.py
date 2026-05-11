@@ -210,73 +210,111 @@ async def add_client(
     if not validate_pan_format(body.pan):
         raise ValidationError("invalid PAN format")
 
-    try:
-        inserted = (
+    # Idempotent on (tenant_id, pan): if a partner double-clicks Add Client
+    # or retries after a transient failure, we don't want to crash on the
+    # UNIQUE constraint — we treat the existing client as the canonical one
+    # and continue with the re-route. The status code stays 201 for the
+    # "fresh insert" path and 200 for the "already existed" path.
+    existing = (
+        await ctx.session.execute(
+            text(
+                "SELECT client_id FROM clients "
+                "WHERE tenant_id = :tid AND pan = :pan"
+            ),
+            {"tid": ctx.claims.tenant_id, "pan": body.pan},
+        )
+    ).first()
+
+    created = False
+    if existing is not None:
+        client_id: UUID = existing[0]
+    else:
+        try:
+            inserted = (
+                await ctx.session.execute(
+                    text(
+                        """
+                        INSERT INTO clients (
+                            tenant_id, pan, legal_name, trade_name, entity_type,
+                            cin, date_of_incorporation_or_birth, industry
+                        ) VALUES (
+                            :tid, :pan, :legal_name, :trade_name, :entity_type,
+                            :cin, CAST(:dob AS DATE), :industry
+                        ) RETURNING client_id
+                        """
+                    ),
+                    {
+                        "tid": ctx.claims.tenant_id,
+                        "pan": body.pan,
+                        "legal_name": body.legal_name,
+                        "trade_name": body.trade_name,
+                        "entity_type": body.entity_type,
+                        "cin": body.cin,
+                        "dob": body.date_of_incorporation_or_birth.isoformat()
+                            if body.date_of_incorporation_or_birth else None,
+                        "industry": body.industry,
+                    },
+                )
+            ).first()
+        except Exception as e:  # noqa: BLE001
+            raise ValidationError(f"could not create client: {e}") from e
+
+        client_id = inserted[0]
+        created = True
+
+        # Every client gets exactly one IT registration (the PAN itself).
+        # Idempotent: if a previous attempt got this far before failing,
+        # the partial-unique index from migration 0003 would catch a
+        # duplicate insert; we skip if it's already there.
+        existing_it = (
+            await ctx.session.execute(
+                text(
+                    "SELECT 1 FROM client_registrations "
+                    "WHERE tenant_id = :tid AND client_id = :cid "
+                    "  AND registration_type = 'IT' LIMIT 1"
+                ),
+                {"tid": ctx.claims.tenant_id, "cid": str(client_id)},
+            )
+        ).first()
+        if existing_it is None:
             await ctx.session.execute(
                 text(
                     """
-                    INSERT INTO clients (
-                        tenant_id, pan, legal_name, trade_name, entity_type,
-                        cin, date_of_incorporation_or_birth, industry
+                    INSERT INTO client_registrations (
+                        tenant_id, client_id, registration_type, identifier_value,
+                        registration_status
                     ) VALUES (
-                        :tid, :pan, :legal_name, :trade_name, :entity_type,
-                        :cin, CAST(:dob AS DATE), :industry
-                    ) RETURNING client_id
+                        :tid, :cid, 'IT', :pan, 'active'
+                    )
                     """
                 ),
-                {
-                    "tid": ctx.claims.tenant_id,
-                    "pan": body.pan,
-                    "legal_name": body.legal_name,
-                    "trade_name": body.trade_name,
-                    "entity_type": body.entity_type,
-                    "cin": body.cin,
-                    "dob": body.date_of_incorporation_or_birth.isoformat()
-                        if body.date_of_incorporation_or_birth else None,
-                    "industry": body.industry,
-                },
+                {"tid": ctx.claims.tenant_id, "cid": str(client_id), "pan": body.pan},
             )
-        ).first()
-    except Exception as e:  # noqa: BLE001
-        raise ValidationError(f"could not create client: {e}") from e
 
-    client_id: UUID = inserted[0]
+        await audit.emit(
+            ctx.session,
+            tenant_id=ctx.claims.tenant_id,
+            user_id=ctx.claims.user_id,
+            action_type="client.created",
+            entity_type="clients",
+            entity_id=client_id,
+            after_state={
+                "pan": body.pan,
+                "legal_name": body.legal_name,
+                "via_inbox": str(body.auto_route_inbox_id) if body.auto_route_inbox_id else None,
+            },
+        )
 
-    # Every client gets exactly one IT registration (the PAN itself).
-    await ctx.session.execute(
-        text(
-            """
-            INSERT INTO client_registrations (
-                tenant_id, client_id, registration_type, identifier_value,
-                registration_status
-            ) VALUES (
-                :tid, :cid, 'IT', :pan, 'active'
-            )
-            """
-        ),
-        {"tid": ctx.claims.tenant_id, "cid": str(client_id), "pan": body.pan},
-    )
-
-    await audit.emit(
-        ctx.session,
-        tenant_id=ctx.claims.tenant_id,
-        user_id=ctx.claims.user_id,
-        action_type="client.created",
-        entity_type="clients",
-        entity_id=client_id,
-        after_state={
-            "pan": body.pan,
-            "legal_name": body.legal_name,
-            "via_inbox": str(body.auto_route_inbox_id) if body.auto_route_inbox_id else None,
-        },
-    )
-    await ctx.session.commit()
-
+    # Re-route on the SAME transaction so a re-route failure rolls back the
+    # client+registration inserts too. Without this, the partner sees an
+    # error and retries, and the second attempt hits the UNIQUE constraint
+    # because the first attempt committed the client row.
     re_routed: dict[str, Any] | None = None
     if body.auto_route_inbox_id is not None:
-        re_routed = await _rerun_routing(ctx, body.auto_route_inbox_id)
+        re_routed = await _rerun_routing_no_commit(ctx, body.auto_route_inbox_id)
 
-    return {"client_id": str(client_id), "rerouted": re_routed}
+    await ctx.session.commit()
+    return {"client_id": str(client_id), "created": created, "rerouted": re_routed}
 
 
 # ----- Add registration ------------------------------------------------------
@@ -311,57 +349,77 @@ async def add_registration(
             # Derive from GSTIN if not provided.
             body = body.model_copy(update={"state_code": body.identifier_value[0:2]})
 
-    try:
-        inserted = (
-            await ctx.session.execute(
-                text(
-                    """
-                    INSERT INTO client_registrations (
-                        tenant_id, client_id, registration_type, identifier_value,
-                        state_code, state_name, jurisdiction_office, registration_status
-                    ) VALUES (
-                        :tid, :cid, :rtype, :iv, :state_code, :state_name, :jo, 'active'
-                    ) RETURNING registration_id
-                    """
-                ),
-                {
-                    "tid": ctx.claims.tenant_id,
-                    "cid": str(client_id),
-                    "rtype": body.registration_type,
-                    "iv": body.identifier_value,
-                    "state_code": body.state_code,
-                    "state_name": body.state_name,
-                    "jo": body.jurisdiction_office,
-                },
-            )
-        ).first()
-    except Exception as e:  # noqa: BLE001
-        raise ValidationError(f"could not create registration: {e}") from e
+    # Idempotent on (tenant, identifier_value): a partner double-click or a
+    # retry after a transient failure returns the existing registration.
+    existing = (
+        await ctx.session.execute(
+            text(
+                "SELECT registration_id FROM client_registrations "
+                "WHERE tenant_id = :tid AND identifier_value = :iv"
+            ),
+            {"tid": ctx.claims.tenant_id, "iv": body.identifier_value},
+        )
+    ).first()
 
-    reg_id: UUID = inserted[0]
+    created = False
+    if existing is not None:
+        reg_id: UUID = existing[0]
+    else:
+        try:
+            inserted = (
+                await ctx.session.execute(
+                    text(
+                        """
+                        INSERT INTO client_registrations (
+                            tenant_id, client_id, registration_type, identifier_value,
+                            state_code, state_name, jurisdiction_office, registration_status
+                        ) VALUES (
+                            :tid, :cid, :rtype, :iv, :state_code, :state_name, :jo, 'active'
+                        ) RETURNING registration_id
+                        """
+                    ),
+                    {
+                        "tid": ctx.claims.tenant_id,
+                        "cid": str(client_id),
+                        "rtype": body.registration_type,
+                        "iv": body.identifier_value,
+                        "state_code": body.state_code,
+                        "state_name": body.state_name,
+                        "jo": body.jurisdiction_office,
+                    },
+                )
+            ).first()
+        except Exception as e:  # noqa: BLE001
+            raise ValidationError(f"could not create registration: {e}") from e
 
-    await audit.emit(
-        ctx.session,
-        tenant_id=ctx.claims.tenant_id,
-        user_id=ctx.claims.user_id,
-        action_type="registration.created",
-        entity_type="client_registrations",
-        entity_id=reg_id,
-        after_state={
-            "client_id": str(client_id),
-            "registration_type": body.registration_type,
-            "identifier_value": body.identifier_value,
-            "state_code": body.state_code,
-            "via_inbox": str(body.auto_route_inbox_id) if body.auto_route_inbox_id else None,
-        },
-    )
-    await ctx.session.commit()
+        reg_id = inserted[0]
+        created = True
 
+        await audit.emit(
+            ctx.session,
+            tenant_id=ctx.claims.tenant_id,
+            user_id=ctx.claims.user_id,
+            action_type="registration.created",
+            entity_type="client_registrations",
+            entity_id=reg_id,
+            after_state={
+                "client_id": str(client_id),
+                "registration_type": body.registration_type,
+                "identifier_value": body.identifier_value,
+                "state_code": body.state_code,
+                "via_inbox": str(body.auto_route_inbox_id) if body.auto_route_inbox_id else None,
+            },
+        )
+
+    # Re-route on the same transaction. A re-route failure rolls the
+    # registration creation back too, so the partner's retry sees a clean
+    # slate.
     re_routed: dict[str, Any] | None = None
     if body.auto_route_inbox_id is not None:
-        re_routed = await _rerun_routing(ctx, body.auto_route_inbox_id)
+        re_routed = await _rerun_routing_no_commit(ctx, body.auto_route_inbox_id)
 
-    return {"registration_id": str(reg_id), "rerouted": re_routed}
+    await ctx.session.commit()
+    return {"registration_id": str(reg_id), "created": created, "rerouted": re_routed}
 
 
 # ----- Helpers ---------------------------------------------------------------
@@ -511,12 +569,18 @@ async def _create_notice_override(
     return inserted[0]
 
 
-async def _rerun_routing(ctx: CurrentContext, inbox_id: UUID) -> dict[str, Any] | None:
-    """Re-run routing for an inbox row after the partner fixed the anomaly."""
+async def _rerun_routing_no_commit(
+    ctx: CurrentContext, inbox_id: UUID
+) -> dict[str, Any] | None:
+    """Re-run routing on the caller's session WITHOUT committing.
+
+    The caller commits once, after the anomaly fix and the re-route are
+    both proven to work. This is what makes add_client + add_registration
+    atomic — a re-route failure rolls the partner's fix back too.
+    """
     inbox = await _fetch_inbox(ctx.session, inbox_id)
     if inbox is None or not isinstance(inbox.get("raw_parsed_json"), dict):
         return None
-    # Reset routing status so route_notice will actually run.
     await ctx.session.execute(
         text(
             """
@@ -535,5 +599,4 @@ async def _rerun_routing(ctx: CurrentContext, inbox_id: UUID) -> dict[str, Any] 
         parsed=inbox["raw_parsed_json"],
         ingest_channel=inbox["ingest_channel"],
     )
-    await ctx.session.commit()
     return decision.to_jsonable()
