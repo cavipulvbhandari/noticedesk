@@ -1,137 +1,153 @@
 -- phase1_demo.sql
--- Sprint 3 demo seed: minimal coverage for the inbox routing flow.
+-- Sprint 4 demo seed: prototype's 5 clients × 14 registrations × 30 matters × 39 notices,
+-- plus the Sprint 3 inbox routing fixtures (i1/i2/i3) preserved.
 --
--- - 1 demo tenant + 1 user
--- - 2 clients with full registration setups, mirroring the prototype's
---   Acme & Cinnamon firms.
--- - 3 pre-seeded inbox rows (i1, i2, i3) covering the three routing
---   decisions the acceptance criteria call out.
---
--- Runs as superuser; tenant context is set inside the file so RLS doesn't
--- block the inserts. Idempotent: re-running upserts rather than failing on
--- duplicate slugs.
+-- Idempotent: re-running upserts rather than failing. Tenant context is
+-- set inside the file so RLS doesn't block the inserts.
 
 BEGIN;
 
 -- ---- Tenant + user --------------------------------------------------------
-
-INSERT INTO tenants (tenant_id, legal_name, slug)
-VALUES ('11111111-1111-1111-1111-111111111111', 'Mehta & Associates', 'mehta-associates')
-ON CONFLICT (tenant_id) DO UPDATE SET legal_name = EXCLUDED.legal_name;
-
-INSERT INTO users (user_id, tenant_id, name, role, email)
-VALUES (
-    '22222222-2222-2222-2222-222222222222',
-    '11111111-1111-1111-1111-111111111111',
-    'Demo Partner', 'partner', 'demo@example.com'
-) ON CONFLICT (user_id) DO NOTHING;
-
+INSERT INTO tenants (tenant_id, legal_name, slug) VALUES ('11111111-1111-1111-1111-111111111111', 'Mehta & Associates', 'mehta-associates') ON CONFLICT (tenant_id) DO UPDATE SET legal_name = EXCLUDED.legal_name;
+INSERT INTO users (user_id, tenant_id, name, role, email) VALUES ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Rohan Mehta', 'partner', 'rohan@mehta-associates.in') ON CONFLICT (user_id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role;
 SELECT set_config('app.current_tenant', '11111111-1111-1111-1111-111111111111', true);
 
--- ---- Client 1 — Acme Industries Private Limited ---------------------------
+-- ---- Drop Cinnamon if it survives from an older seed run -------------------
+-- Cascade-deletes notices, matters, and registrations for that client. Safe
+-- because the inbox fixture references Acme, not Cinnamon.
+DELETE FROM notices    WHERE client_id = 'cccccccc-1111-1111-1111-111111111111';
+DELETE FROM matters    WHERE client_id = 'cccccccc-1111-1111-1111-111111111111';
+DELETE FROM client_registrations WHERE client_id = 'cccccccc-1111-1111-1111-111111111111';
+DELETE FROM clients    WHERE client_id = 'cccccccc-1111-1111-1111-111111111111';
 
-INSERT INTO clients (client_id, tenant_id, pan, legal_name, trade_name, entity_type)
-VALUES (
-    'aaaaaaaa-1111-1111-1111-111111111111',
-    '11111111-1111-1111-1111-111111111111',
-    'AAACA9876B', 'Acme Industries Private Limited', 'Acme Industries', 'company'
-) ON CONFLICT (client_id) DO NOTHING;
+-- ---- 5 clients ------------------------------------------------------------
+INSERT INTO clients (client_id, tenant_id, pan, legal_name, trade_name, entity_type, industry) VALUES ('aaaaaaaa-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'AAACA9876B', 'Acme Industries Private Limited', 'Acme', 'Private Limited Company', 'Manufacturing') ON CONFLICT (client_id) DO UPDATE SET legal_name = EXCLUDED.legal_name, trade_name = EXCLUDED.trade_name, entity_type = EXCLUDED.entity_type, industry = EXCLUDED.industry;
+INSERT INTO clients (client_id, tenant_id, pan, legal_name, trade_name, entity_type, industry) VALUES ('bbbbbbbb-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'AABCS5678C', 'Sunteck Realty Holdings Ltd', 'Sunteck Holdings', 'Public Limited Company', 'Real Estate') ON CONFLICT (client_id) DO UPDATE SET legal_name = EXCLUDED.legal_name, trade_name = EXCLUDED.trade_name, entity_type = EXCLUDED.entity_type, industry = EXCLUDED.industry;
+INSERT INTO clients (client_id, tenant_id, pan, legal_name, trade_name, entity_type, industry) VALUES ('dddddddd-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'APBPP1234D', 'Patil Trading Company', 'Patil Trading', 'Partnership Firm', 'Wholesale Trading') ON CONFLICT (client_id) DO UPDATE SET legal_name = EXCLUDED.legal_name, trade_name = EXCLUDED.trade_name, entity_type = EXCLUDED.entity_type, industry = EXCLUDED.industry;
+INSERT INTO clients (client_id, tenant_id, pan, legal_name, trade_name, entity_type, industry) VALUES ('eeeeeeee-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'AADFV4321E', 'Verma Software Solutions LLP', 'Verma Software', 'Limited Liability Partnership', 'Information Technology') ON CONFLICT (client_id) DO UPDATE SET legal_name = EXCLUDED.legal_name, trade_name = EXCLUDED.trade_name, entity_type = EXCLUDED.entity_type, industry = EXCLUDED.industry;
+INSERT INTO clients (client_id, tenant_id, pan, legal_name, trade_name, entity_type, industry) VALUES ('ffffffff-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 'AANPK7890F', 'Dr. Anjali Kapoor', NULL, 'Individual (Proprietor)', 'Healthcare Services') ON CONFLICT (client_id) DO UPDATE SET legal_name = EXCLUDED.legal_name, trade_name = EXCLUDED.trade_name, entity_type = EXCLUDED.entity_type, industry = EXCLUDED.industry;
 
-INSERT INTO client_registrations (
-    registration_id, tenant_id, client_id, registration_type, identifier_value
-) VALUES (
-    'aaaaaaaa-2222-2222-2222-111111111111',
-    '11111111-1111-1111-1111-111111111111',
-    'aaaaaaaa-1111-1111-1111-111111111111',
-    'IT', 'AAACA9876B'
-) ON CONFLICT (registration_id) DO NOTHING;
+-- ---- 14 registrations -----------------------------------------------------
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('aaaaaaaa-2222-2222-2222-111111111111', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'IT', 'AAACA9876B', NULL, NULL, 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('aaaaaaaa-3333-3333-3333-111111111111', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'GST', '27AAACA9876B1Z5', '27', 'Maharashtra', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('aaaaaaaa-3333-3333-3333-222222222222', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'GST', '24AAACA9876B1Z3', '24', 'Gujarat', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('aaaaaaaa-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'GST', '29AAACA9876B1Z9', '29', 'Karnataka', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('bbbbbbbb-2222-2222-2222-111111111111', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'IT', 'AABCS5678C', NULL, NULL, 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('bbbbbbbb-3333-3333-3333-111111111111', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'GST', '27AABCS5678C1Z7', '27', 'Maharashtra', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('dddddddd-2222-2222-2222-111111111111', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'IT', 'APBPP1234D', NULL, NULL, 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('dddddddd-3333-3333-3333-111111111111', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'GST', '27APBPP1234D1Z2', '27', 'Maharashtra', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('dddddddd-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'GST', '33APBPP1234D1Z6', '33', 'Tamil Nadu', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('eeeeeeee-2222-2222-2222-111111111111', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'IT', 'AADFV4321E', NULL, NULL, 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('eeeeeeee-3333-3333-3333-111111111111', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'GST', '29AADFV4321E1Z5', '29', 'Karnataka', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('eeeeeeee-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'GST', '36AADFV4321E1Z8', '36', 'Telangana', 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('ffffffff-2222-2222-2222-111111111111', '11111111-1111-1111-1111-111111111111', 'ffffffff-1111-1111-1111-111111111111', 'IT', 'AANPK7890F', NULL, NULL, 'active') ON CONFLICT (registration_id) DO NOTHING;
+INSERT INTO client_registrations (registration_id, tenant_id, client_id, registration_type, identifier_value, state_code, state_name, registration_status) VALUES ('ffffffff-3333-3333-3333-111111111111', '11111111-1111-1111-1111-111111111111', 'ffffffff-1111-1111-1111-111111111111', 'GST', '07AANPK7890F1ZD', '07', 'Delhi', 'active') ON CONFLICT (registration_id) DO NOTHING;
 
-INSERT INTO client_registrations (
-    registration_id, tenant_id, client_id, registration_type,
-    identifier_value, state_code, state_name, registration_status
-) VALUES
-    (
-      'aaaaaaaa-3333-3333-3333-111111111111',
-      '11111111-1111-1111-1111-111111111111',
-      'aaaaaaaa-1111-1111-1111-111111111111',
-      'GST', '27AAACA9876B1Z5', '27', 'Maharashtra', 'active'
-    ),
-    (
-      'aaaaaaaa-3333-3333-3333-222222222222',
-      '11111111-1111-1111-1111-111111111111',
-      'aaaaaaaa-1111-1111-1111-111111111111',
-      'GST', '24AAACA9876B1Z3', '24', 'Gujarat', 'active'
-    )
-ON CONFLICT (registration_id) DO NOTHING;
+-- ---- Matters: one per (client, registration, FY/AY) ----------------------
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000001', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', '2022-23', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000002', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000003', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', '2021-22', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000004', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-222222222222', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000005', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-333333333333', 'GST', '2024-25', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000006', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', NULL, '2024-25') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000007', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', NULL, '2023-24') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000008', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', NULL, '2022-23') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000009', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-3333-3333-3333-111111111111', 'GST', '2022-23', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000010', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-3333-3333-3333-111111111111', 'GST', '2021-22', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000011', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', NULL, '2020-21') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000012', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', NULL, '2023-24') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000013', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', NULL, '2024-25') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000014', '11111111-1111-1111-1111-111111111111', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', NULL, '2019-20') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000015', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', '2022-23', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000016', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000017', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', '2024-25', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000018', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-333333333333', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000019', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-2222-2222-2222-111111111111', 'IT', NULL, '2023-24') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000020', '11111111-1111-1111-1111-111111111111', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-2222-2222-2222-111111111111', 'IT', NULL, '2024-25') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000021', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-3333-3333-3333-111111111111', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000022', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-3333-3333-3333-111111111111', 'GST', '2022-23', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000023', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-3333-3333-3333-333333333333', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000024', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-2222-2222-2222-111111111111', 'IT', NULL, '2023-24') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000025', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-2222-2222-2222-111111111111', 'IT', NULL, '2024-25') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000026', '11111111-1111-1111-1111-111111111111', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-2222-2222-2222-111111111111', 'IT', NULL, '2022-23') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000027', '11111111-1111-1111-1111-111111111111', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-3333-3333-3333-111111111111', 'GST', '2023-24', NULL) ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000028', '11111111-1111-1111-1111-111111111111', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', NULL, '2024-25') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000029', '11111111-1111-1111-1111-111111111111', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', NULL, '2023-24') ON CONFLICT (matter_id) DO NOTHING;
+INSERT INTO matters (matter_id, tenant_id, client_id, registration_id, law, financial_year, assessment_year) VALUES ('00000000-1111-2222-3333-000000000030', '11111111-1111-1111-1111-111111111111', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', NULL, '2021-22') ON CONFLICT (matter_id) DO NOTHING;
 
--- ---- Client 2 — Cinnamon Bakery LLP ---------------------------------------
+-- ---- 39 notices -----------------------------------------------------------
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000001', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', 'ASMT-10', 'DIN20260117ASMT10004587', DATE '2026-05-17', NULL, 'STO Range 5, Pune-1', '2022-23', NULL, 'in_progress', 'gst_portal_gsp', '{"issue": "ITC mismatch FY 22-23, \u20b914.2 lakh", "assigned_to": "Priya Joshi"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000002', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000002', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', 'DRC-01A', 'DRC0124MH0011928', DATE '2026-05-22', NULL, 'STO Range 5, Pune-1', '2023-24', NULL, 'issued', 'gst_portal_gsp', '{"issue": "Excess ITC reversal, \u20b93.4 lakh", "assigned_to": "Akash Bose"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000003', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000003', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', 'DRC-01', 'DRC0122MH0007124', DATE '2026-05-04', NULL, 'Joint Commissioner, Mumbai South', '2021-22', NULL, 'due_date_over', 'web_upload', '{"issue": "ITC denial \u2014 fake vendor allegation, \u20b922.7 lakh", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000004', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000003', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-111111111111', 'GST', 'GST_HEARING', NULL, DATE '2026-05-15', DATE '2026-05-15', 'Joint Commissioner, Mumbai South', '2021-22', NULL, 'issued', 'email', '{"issue": "Personal hearing scheduled \u2014 DRC-01 reply", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000005', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000004', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-222222222222', 'GST', 'ASMT-10', 'DIN20260121ASMT10004722', DATE '2026-05-23', NULL, 'STO Surat-1', '2023-24', NULL, 'in_progress', 'gst_portal_gsp', '{"issue": "Outward supply discrepancy, \u20b96.8 lakh", "assigned_to": "Priya Joshi"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000006', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000004', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-222222222222', 'GST', 'DRC-01A', 'DRC0124GJ0029481', DATE '2026-05-08', NULL, 'STO Surat-1', '2023-24', NULL, 'reply_submitted', 'gst_portal_gsp', '{"issue": "Late fee on GSTR-1 filing, \u20b954,000", "assigned_to": "Akash Bose"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000007', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000005', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-3333-3333-3333-333333333333', 'GST', 'ASMT-10', NULL, DATE '2026-06-04', NULL, 'STO Bengaluru East', '2024-25', NULL, 'issued', 'web_upload', '{"issue": "ITC mismatch FY 24-25, \u20b92.1 lakh", "assigned_to": "Priya Joshi"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000008', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000006', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/ASS/F/142(1)/2025-26/0001', DATE '2026-05-19', NULL, 'ACIT Circle 3(1), Mumbai', NULL, '2024-25', 'in_progress', 'it_portal_aa', '{"issue": "Information requisition \u2014 large cash transactions", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000009', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000007', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', 'IT_143(2)', 'ITBA/ASS/F/143(2)/2025-26/0017', DATE '2026-05-26', NULL, 'ACIT Circle 3(1), Mumbai', NULL, '2023-24', 'issued', 'it_portal_aa', '{"issue": "Scrutiny \u2014 disallowance under \u00a740(a)(ia)", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000010', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000008', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', 'IT_148_148A', 'ITBA/AST/F/148/2025-26/0008', DATE '2026-05-12', NULL, 'DCIT Central Circle, Mumbai', NULL, '2022-23', 'in_progress', 'web_upload', '{"issue": "Reassessment \u2014 escaped income on land sale", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000011', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000006', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/ASS/F/142(1)/2025-26/0019', DATE '2026-04-29', NULL, 'ACIT Circle 3(1), Mumbai', NULL, '2024-25', 'reply_submitted', 'it_portal_aa', '{"issue": "Bank statement and books production", "assigned_to": "Priya Joshi"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000012', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000008', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', 'IT_CITA_NFAC_HEARING', 'ITBA/CITA/F/AY2223/0203', DATE '2026-04-15', DATE '2026-04-15', 'CIT(A) NFAC', NULL, '2022-23', 'acknowledged', 'it_portal_aa', '{"issue": "Appeal hearing \u2014 TDS disallowance", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000013', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000007', 'aaaaaaaa-1111-1111-1111-111111111111', 'aaaaaaaa-2222-2222-2222-111111111111', 'IT', 'IT_143(2)', 'ITBA/ASS/F/143(2)/2025-26/0011', DATE '2026-04-08', NULL, 'ACIT Circle 3(1), Mumbai', NULL, '2023-24', 'order_received', 'it_portal_aa', '{"issue": "Scrutiny \u2014 depreciation claim on plant", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000014', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000009', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-3333-3333-3333-111111111111', 'GST', 'ASMT-10', 'DIN20260119ASMT10004611', DATE '2026-05-13', NULL, 'Asst. Commissioner, Mumbai West', '2022-23', NULL, 'in_progress', 'gst_portal_gsp', '{"issue": "JDA outward supply classification, \u20b91.8 cr", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000015', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000010', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-3333-3333-3333-111111111111', 'GST', 'DRC-01', 'DRC0122MH0008871', DATE '2026-05-20', NULL, 'Joint Commissioner, Mumbai West', '2021-22', NULL, 'in_progress', 'web_upload', '{"issue": "TDR liability dispute, \u20b947.5 lakh", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000016', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000010', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-3333-3333-3333-111111111111', 'GST', 'GST_HEARING', NULL, DATE '2026-05-30', DATE '2026-05-30', 'Joint Commissioner, Mumbai West', '2021-22', NULL, 'issued', 'email', '{"issue": "Personal hearing \u2014 TDR dispute", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000017', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000011', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', 'IT_148_148A', 'ITBA/AST/F/148A/2025-26/0019', DATE '2026-05-10', NULL, 'ACIT Central Circle, Mumbai', NULL, '2020-21', 'in_progress', 'web_upload', '{"issue": "Reassessment \u2014 share capital under \u00a768", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000018', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000012', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', 'IT_143(2)', 'ITBA/ASS/F/143(2)/2025-26/0033', DATE '2026-06-02', NULL, 'ACIT Central Circle, Mumbai', NULL, '2023-24', 'issued', 'it_portal_aa', '{"issue": "Scrutiny \u2014 interest disallowance \u00a736(1)(iii)", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000019', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000013', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/TP/F/142/2025-26/0007', DATE '2026-05-25', NULL, 'TPO Range 1, Mumbai', NULL, '2024-25', 'in_progress', 'it_portal_aa', '{"issue": "TP documentation production", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000020', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000014', 'bbbbbbbb-1111-1111-1111-111111111111', 'bbbbbbbb-2222-2222-2222-111111111111', 'IT', 'IT_CITA_NFAC_HEARING', 'ITBA/CITA/F/AY1920/0411', DATE '2026-05-28', DATE '2026-05-28', 'CIT(A) NFAC', NULL, '2019-20', 'issued', 'it_portal_aa', '{"issue": "Appeal hearing \u2014 share capital addition", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000021', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000015', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', 'DRC-01', 'DRC0122MH0009334', DATE '2026-05-09', NULL, 'STO Range 7, Mumbai', '2022-23', NULL, 'due', 'web_upload', '{"issue": "ITC denial \u2014 vendor cancellation, \u20b98.4 lakh", "assigned_to": "Sneha Naik"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000022', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000016', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', 'ASMT-10', 'DIN20260120ASMT10004659', DATE '2026-05-18', NULL, 'STO Range 7, Mumbai', '2023-24', NULL, 'in_progress', 'gst_portal_gsp', '{"issue": "Turnover under-declaration, \u20b93.1 lakh", "assigned_to": "Sneha Naik"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000023', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000016', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', 'DRC-01A', 'DRC0124MH0029814', DATE '2026-04-30', NULL, 'STO Range 7, Mumbai', '2023-24', NULL, 'reply_submitted', 'gst_portal_gsp', '{"issue": "Interest on delayed payment, \u20b962,000", "assigned_to": "Akash Bose"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000024', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000015', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', 'DRC-01', 'DRC0122MH0010847', DATE '2026-05-21', NULL, 'STO Range 7, Mumbai', '2022-23', NULL, 'issued', 'web_upload', '{"issue": "RCM non-payment, \u20b91.4 lakh", "assigned_to": "Sneha Naik"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000025', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000017', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-111111111111', 'GST', 'ASMT-10', NULL, DATE '2026-06-08', NULL, 'STO Range 7, Mumbai', '2024-25', NULL, 'issued', 'web_upload', '{"issue": "ITC mismatch FY 24-25", "assigned_to": "Sneha Naik"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000026', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000018', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-3333-3333-3333-333333333333', 'GST', 'DRC-01A', 'DRC0124TN0044812', DATE '2026-05-14', NULL, 'STO Chennai South', '2023-24', NULL, 'issued', 'web_upload', '{"issue": "Late filing late fee, \u20b914,400", "assigned_to": "Akash Bose"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000027', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000019', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-2222-2222-2222-111111111111', 'IT', 'IT_143(2)', 'ITBA/ASS/F/143(2)/2025-26/0048', DATE '2026-05-16', NULL, 'ITO Ward 9(1), Mumbai', NULL, '2023-24', 'in_progress', 'it_portal_aa', '{"issue": "Scrutiny \u2014 sundry creditors verification", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000028', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000020', 'dddddddd-1111-1111-1111-111111111111', 'dddddddd-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/ASS/F/142(1)/2025-26/0094', DATE '2026-05-31', NULL, 'ITO Ward 9(1), Mumbai', NULL, '2024-25', 'issued', 'it_portal_aa', '{"issue": "Books and ledger production", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000029', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000021', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-3333-3333-3333-111111111111', 'GST', 'ASMT-10', 'DIN20260123ASMT10004844', DATE '2026-05-27', NULL, 'STO Bengaluru East', '2023-24', NULL, 'in_progress', 'gst_portal_gsp', '{"issue": "Export refund discrepancy, \u20b94.7 lakh", "assigned_to": "Priya Joshi"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000030', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000022', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-3333-3333-3333-111111111111', 'GST', 'DRC-01A', 'DRC0122KA0019334', DATE '2026-04-25', NULL, 'STO Bengaluru East', '2022-23', NULL, 'acknowledged', 'gst_portal_gsp', '{"issue": "ITC reversal Rule 42, \u20b988,000", "assigned_to": "Akash Bose"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000031', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000023', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-3333-3333-3333-333333333333', 'GST', 'ASMT-10', NULL, DATE '2026-06-12', NULL, 'STO Hyderabad', '2023-24', NULL, 'issued', 'web_upload', '{"issue": "Place of supply dispute", "assigned_to": "Priya Joshi"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000032', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000024', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-2222-2222-2222-111111111111', 'IT', 'IT_143(2)', 'ITBA/ASS/F/143(2)/2025-26/0061', DATE '2026-05-29', NULL, 'DCIT Circle 4(2), Bengaluru', NULL, '2023-24', 'issued', 'it_portal_aa', '{"issue": "Scrutiny \u2014 software development expense classification", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000033', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000025', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/ASS/F/142(1)/2025-26/0107', DATE '2026-05-11', NULL, 'DCIT Circle 4(2), Bengaluru', NULL, '2024-25', 'in_progress', 'it_portal_aa', '{"issue": "Foreign remittance details, \u00a7195", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000034', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000026', 'eeeeeeee-1111-1111-1111-111111111111', 'eeeeeeee-2222-2222-2222-111111111111', 'IT', 'IT_CITA_NFAC_HEARING', 'ITBA/CITA/F/AY2223/0288', DATE '2026-04-22', DATE '2026-04-22', 'CIT(A) NFAC', NULL, '2022-23', 'appeal_filed', 'it_portal_aa', '{"issue": "Appeal hearing \u2014 software expense", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000035', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000027', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-3333-3333-3333-111111111111', 'GST', 'DRC-01A', 'DRC0124DL0014721', DATE '2026-05-24', NULL, 'STO Delhi North', '2023-24', NULL, 'issued', 'web_upload', '{"issue": "Late GSTR-1 fee, \u20b98,000", "assigned_to": "Sneha Naik"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000036', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000028', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/ASS/F/142(1)/2025-26/0144', DATE '2026-05-13', NULL, 'ITO Ward 18, Delhi', NULL, '2024-25', 'in_progress', 'it_portal_aa', '{"issue": "Receipts vs AIS reconciliation", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000037', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000029', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', 'IT_143(2)', 'ITBA/ASS/F/143(2)/2025-26/0078', DATE '2026-06-05', NULL, 'ITO Ward 18, Delhi', NULL, '2023-24', 'issued', 'it_portal_aa', '{"issue": "Scrutiny \u2014 clinic equipment depreciation", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000038', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000030', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', 'IT_CITA_NFAC_HEARING', 'ITBA/CITA/F/AY2122/0512', DATE '2026-05-26', DATE '2026-05-26', 'CIT(A) NFAC', NULL, '2021-22', 'issued', 'it_portal_aa', '{"issue": "Appeal \u2014 capital gains on flat sale", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
+INSERT INTO notices (notice_id, tenant_id, matter_id, client_id, registration_id, law, document_type, din_or_rfn, due_date, hearing_date, authority, financial_year, assessment_year, lifecycle_status, ingest_channel, raw_extracted_json) VALUES ('00000000-4444-5555-6666-000000000039', '11111111-1111-1111-1111-111111111111', '00000000-1111-2222-3333-000000000029', 'ffffffff-1111-1111-1111-111111111111', 'ffffffff-2222-2222-2222-111111111111', 'IT', 'IT_142(1)', 'ITBA/ASS/F/142(1)/2025-26/0066', DATE '2026-04-18', NULL, 'ITO Ward 18, Delhi', NULL, '2023-24', 'reply_submitted', 'it_portal_aa', '{"issue": "26AS reconciliation FY 22-23", "assigned_to": "Rohan Mehta"}'::JSONB) ON CONFLICT (notice_id) DO NOTHING;
 
-INSERT INTO clients (client_id, tenant_id, pan, legal_name, entity_type)
-VALUES (
-    'cccccccc-1111-1111-1111-111111111111',
-    '11111111-1111-1111-1111-111111111111',
-    'AAACC2345D', 'Cinnamon Bakery LLP', 'LLP'
-) ON CONFLICT (client_id) DO NOTHING;
-
-INSERT INTO client_registrations (
-    registration_id, tenant_id, client_id, registration_type, identifier_value
-) VALUES (
-    'cccccccc-2222-2222-2222-111111111111',
-    '11111111-1111-1111-1111-111111111111',
-    'cccccccc-1111-1111-1111-111111111111',
-    'IT', 'AAACC2345D'
-) ON CONFLICT (registration_id) DO NOTHING;
-
-INSERT INTO client_registrations (
-    registration_id, tenant_id, client_id, registration_type,
-    identifier_value, state_code, state_name, registration_status
-) VALUES (
-    'cccccccc-3333-3333-3333-111111111111',
-    '11111111-1111-1111-1111-111111111111',
-    'cccccccc-1111-1111-1111-111111111111',
-    'GST', '07AAACC2345D1Z9', '07', 'Delhi', 'active'
-) ON CONFLICT (registration_id) DO NOTHING;
-
--- ---- i1: routed cleanly to Acme Maharashtra GST ---------------------------
+-- ---- Sprint 3 inbox fixtures (preserved) ----------------------------------
+-- i1: cleanly routed to Acme MH GST FY 22-23 (creates one extra notice).
+-- i2: client_not_found anomaly (Sunrise Papers — PAN not in our 5).
+-- i3: new_gst_registration_detected anomaly (Acme Karnataka GSTIN variant).
 
 INSERT INTO documents_inbox (
     inbox_id, tenant_id, original_filename, file_hash, file_size_bytes,
     mime_type, s3_key, ingest_channel,
     ocr_status, ocr_text, ocr_provider_used, page_count, ocr_completed_at,
-    parse_status, routing_status,
-    raw_parsed_json
+    parse_status, routing_status, raw_parsed_json
 ) VALUES (
-    '00000000-0000-0000-0000-00000000000a',
-    '11111111-1111-1111-1111-111111111111',
+    '00000000-0000-0000-0000-00000000000a', '11111111-1111-1111-1111-111111111111',
     'ASMT-10_27AAACA9876B1Z5.pdf',
     '1111111111111111111111111111111111111111111111111111111111111111',
-    98765, 'application/pdf',
-    'seed/i1.pdf', 'email',
+    98765, 'application/pdf', 'seed/i1.pdf', 'email',
     'completed',
     'NOTICE OF ASMT-10 to Acme Industries GSTIN 27AAACA9876B1Z5 for FY 2022-23 ...',
     'stub', 3, NOW(),
-    'completed', 'pending',  -- routing_status reset to 'pending' so the seed
-                              -- re-routes deterministically when the API is
-                              -- restarted; the manual INSERT below sets it
-                              -- to 'routed' explicitly.
+    'completed', 'pending',
     '{"document_type":"ASMT-10","law":"GST","client_name_on_document":"Acme Industries Private Limited","pans_extracted":[],"gstins_extracted":[{"value":"27AAACA9876B1Z5","location":"para 1","state_code":"27"}],"notice_number":"ASMT-10/2024/0001","issue_date":"2024-09-12","due_date":"2024-09-30","financial_year":"2022-23","assessment_year":null,"authority":"State Tax Officer, Mumbai Ward 5","issues":["ITC mismatch with 2A"],"documents_required":["GSTR-3B for 2022-23","Purchase register"],"parse_confidence":0.92,"fields_needing_review":[]}'::JSONB
 ) ON CONFLICT (inbox_id) DO NOTHING;
-
--- ---- i2: client_not_found (PAN extracted but no matching client) ----------
 
 INSERT INTO documents_inbox (
     inbox_id, tenant_id, original_filename, file_hash, file_size_bytes,
     mime_type, s3_key, ingest_channel,
     ocr_status, ocr_text, ocr_provider_used, page_count, ocr_completed_at,
-    parse_status, routing_status,
-    raw_parsed_json, routing_anomaly_details
+    parse_status, routing_status, raw_parsed_json, routing_anomaly_details
 ) VALUES (
-    '00000000-0000-0000-0000-00000000000b',
-    '11111111-1111-1111-1111-111111111111',
+    '00000000-0000-0000-0000-00000000000b', '11111111-1111-1111-1111-111111111111',
     'DRC-01A_27AAQCS3456P1ZF.pdf',
     '2222222222222222222222222222222222222222222222222222222222222222',
-    54321, 'application/pdf',
-    'seed/i2.pdf', 'web_upload',
+    54321, 'application/pdf', 'seed/i2.pdf', 'web_upload',
     'completed',
     'INTIMATION DRC-01A to SUNRISE PAPERS PVT LTD GSTIN 27AAQCS3456P1ZF for FY 2023-24 ...',
     'stub', 2, NOW(),
@@ -140,31 +156,25 @@ INSERT INTO documents_inbox (
     '{"canonical_pan":"AAQCS3456P","extracted_name":"Sunrise Papers Pvt Ltd","extracted_gstins":["27AAQCS3456P1ZF"]}'::JSONB
 ) ON CONFLICT (inbox_id) DO NOTHING;
 
--- ---- i3: new_gst_registration_detected (Acme PAN matches; new state GSTIN) -
-
 INSERT INTO documents_inbox (
     inbox_id, tenant_id, original_filename, file_hash, file_size_bytes,
     mime_type, s3_key, ingest_channel,
     ocr_status, ocr_text, ocr_provider_used, page_count, ocr_completed_at,
-    parse_status, routing_status,
-    raw_parsed_json, routing_anomaly_details
+    parse_status, routing_status, raw_parsed_json, routing_anomaly_details
 ) VALUES (
-    '00000000-0000-0000-0000-00000000000c',
-    '11111111-1111-1111-1111-111111111111',
+    '00000000-0000-0000-0000-00000000000c', '11111111-1111-1111-1111-111111111111',
     'ASMT-10_29AAACA9876B1ZK.pdf',
     '3333333333333333333333333333333333333333333333333333333333333333',
-    76543, 'application/pdf',
-    'seed/i3.pdf', 'web_upload',
+    76543, 'application/pdf', 'seed/i3.pdf', 'web_upload',
     'completed',
     'NOTICE OF ASMT-10 to Acme Industries GSTIN 29AAACA9876B1ZK (Karnataka) for FY 2023-24 ...',
     'stub', 2, NOW(),
     'completed', 'new_gst_registration_detected',
     '{"document_type":"ASMT-10","law":"GST","client_name_on_document":"Acme Industries Private Limited","pans_extracted":[],"gstins_extracted":[{"value":"29AAACA9876B1ZK","location":"header","state_code":"29"}],"financial_year":"2023-24","issues":["ITC mismatch"],"documents_required":[],"parse_confidence":0.90,"fields_needing_review":[]}'::JSONB,
-    ('{"canonical_pan":"AAACA9876B","client_id":"aaaaaaaa-1111-1111-1111-111111111111","client_legal_name":"Acme Industries Private Limited","gstin":"29AAACA9876B1ZK","state_code":"29"}')::JSONB
+    '{"canonical_pan":"AAACA9876B","client_id":"aaaaaaaa-1111-1111-1111-111111111111","client_legal_name":"Acme Industries Private Limited","gstin":"29AAACA9876B1ZK","state_code":"29"}'::JSONB
 ) ON CONFLICT (inbox_id) DO NOTHING;
 
 -- Manually route i1 to keep the demo state deterministic.
-
 DO $$
 DECLARE
     v_inbox UUID := '00000000-0000-0000-0000-00000000000a';
@@ -175,28 +185,29 @@ DECLARE
     v_notice UUID;
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM notices WHERE source_inbox_id = v_inbox) THEN
-        INSERT INTO matters (tenant_id, client_id, registration_id, law, financial_year)
-        VALUES (v_tenant, v_client, v_reg, 'GST', '2022-23')
-        RETURNING matter_id INTO v_matter;
-
+        -- Reuse the existing FY 22-23 matter we just inserted for Acme MH.
+        SELECT matter_id INTO v_matter
+        FROM matters
+        WHERE client_id = v_client AND registration_id = v_reg AND financial_year = '2022-23'
+        LIMIT 1;
+        IF v_matter IS NULL THEN
+            INSERT INTO matters (tenant_id, client_id, registration_id, law, financial_year)
+            VALUES (v_tenant, v_client, v_reg, 'GST', '2022-23')
+            RETURNING matter_id INTO v_matter;
+        END IF;
         INSERT INTO notices (
             tenant_id, matter_id, client_id, registration_id, law,
             document_type, notice_number, issue_date, due_date, authority,
             financial_year, ingest_channel, source_inbox_id,
-            parse_confidence, pan_gstin_reconciliation_status,
-            raw_extracted_json
+            parse_confidence, pan_gstin_reconciliation_status, raw_extracted_json
         ) VALUES (
             v_tenant, v_matter, v_client, v_reg, 'GST',
             'ASMT-10', 'ASMT-10/2024/0001', DATE '2024-09-12', DATE '2024-09-30',
-            'State Tax Officer, Mumbai Ward 5', '2022-23',
-            'email', v_inbox, 0.92, 'reconciled',
+            'State Tax Officer, Mumbai Ward 5', '2022-23', 'email', v_inbox,
+            0.92, 'reconciled',
             '{"issues":["ITC mismatch with 2A"]}'::JSONB
         ) RETURNING notice_id INTO v_notice;
-
-        UPDATE documents_inbox
-        SET routing_status = 'routed',
-            parsed_to_notice_id = v_notice
-        WHERE inbox_id = v_inbox;
+        UPDATE documents_inbox SET routing_status = 'routed', parsed_to_notice_id = v_notice WHERE inbox_id = v_inbox;
     END IF;
 END $$;
 
