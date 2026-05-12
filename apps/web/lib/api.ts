@@ -266,6 +266,69 @@ export async function updateRegistration(
   return (await res.json()) as { registration_id: string; updated_fields: string[] };
 }
 
+export interface NoticeListRow {
+  notice_id: string;
+  law: "GST" | "IT";
+  document_type: string | null;
+  due_date: string | null;
+  financial_year: string | null;
+  assessment_year: string | null;
+  lifecycle_status: string;
+  ingest_channel: string;
+  din_or_rfn: string | null;
+  issue: string | null;
+  assigned_to: string | null;
+  client_id: string;
+  client_legal_name: string;
+  client_pan: string;
+  registration_id: string;
+  registration_type: "IT" | "GST";
+  registration_identifier: string;
+  registration_state_code: string | null;
+  registration_state_name: string | null;
+}
+
+export interface NoticeListResponse {
+  notices: NoticeListRow[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface NoticeListFilters {
+  status?: string;
+  law?: "GST" | "IT";
+  client_id?: string;
+  registration_id?: string;
+  state_code?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export async function fetchNotices(
+  filters: NoticeListFilters = {},
+): Promise<NoticeListResponse> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) {
+    if (v === undefined || v === null || v === "") continue;
+    qs.set(k, String(v));
+  }
+  const url = qs.toString() ? `/api/notices?${qs.toString()}` : "/api/notices";
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load notices (${res.status})`);
+  return (await res.json()) as NoticeListResponse;
+}
+
+export type StatusCounts = Record<string, number>;
+
+export async function fetchStatusCounts(): Promise<StatusCounts> {
+  const res = await fetch("/api/dashboard/status_counts", { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load status counts (${res.status})`);
+  return (await res.json()) as StatusCounts;
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";

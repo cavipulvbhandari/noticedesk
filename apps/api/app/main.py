@@ -9,7 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
-from app.routes import clients, documents, email, health, registrations, routing, session
+from app.routes import (
+    clients,
+    documents,
+    email,
+    health,
+    notices,
+    registrations,
+    routing,
+    session,
+)
 
 
 def create_app() -> FastAPI:
@@ -43,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(routing.router, prefix="/v1")
     app.include_router(clients.router, prefix="/v1")
     app.include_router(registrations.router, prefix="/v1")
+    app.include_router(notices.router, prefix="/v1")
 
     return app
 
