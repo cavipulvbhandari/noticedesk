@@ -6,12 +6,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+// Phase 1 seed IDs — pre-filled so partners don't have to type UUIDs from
+// memory. Clerk replaces this whole form in Sprint 2.
+const SEED_TENANT = "11111111-1111-1111-1111-111111111111";
+const SEED_USER = "22222222-2222-2222-2222-222222222222";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [tenantId, setTenantId] = useState("");
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("rohan@mehta-associates.in");
+  const [password, setPassword] = useState("dev");
+  const [tenantId, setTenantId] = useState(SEED_TENANT);
+  const [userId, setUserId] = useState(SEED_USER);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,7 +45,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-2xl font-semibold text-navy">Sign in to NoticeDesk</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Sprint 1 development login. Real Clerk/Auth0 sign-in lands in Sprint 2.
+          Dev login (prefilled with the seed partner). Clerk arrives in Sprint 2.
         </p>
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div className="space-y-1">

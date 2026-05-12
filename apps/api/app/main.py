@@ -17,6 +17,7 @@ from app.routes import (
     notices,
     registrations,
     routing,
+    search,
     session,
 )
 
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(clients.router, prefix="/v1")
     app.include_router(registrations.router, prefix="/v1")
     app.include_router(notices.router, prefix="/v1")
+    app.include_router(search.router, prefix="/v1")
 
     return app
 

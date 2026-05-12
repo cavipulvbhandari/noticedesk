@@ -486,6 +486,37 @@ export async function createNotice(
   return (await res.json()) as { notice_id: string; matter_id: string };
 }
 
+export interface SearchResult {
+  query: string;
+  clients: Array<{
+    client_id: string;
+    legal_name: string;
+    pan: string;
+    entity_type: string | null;
+  }>;
+  notices: Array<{
+    notice_id: string;
+    document_type: string | null;
+    due_date: string | null;
+    lifecycle_status: string;
+    din_or_rfn: string | null;
+    issue: string | null;
+    client_legal_name: string;
+  }>;
+}
+
+export async function search(q: string): Promise<SearchResult> {
+  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`search failed (${res.status})`);
+  return (await res.json()) as SearchResult;
+}
+
+export async function logout(): Promise<void> {
+  await fetch("/api/logout", { method: "POST" });
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";
