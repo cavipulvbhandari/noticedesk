@@ -14,16 +14,17 @@ through here.
 from __future__ import annotations
 
 import json
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.core.errors import NotFoundError, ValidationError
 from app.middleware.tenant_context import CurrentContext
 from app.services import audit
+from app.services.docx_export import CoverSheetData, render_draft_docx
 from app.workflows.drafting import GenerateDraftJob, run_generate_draft
 
 router = APIRouter()
@@ -364,3 +365,104 @@ async def edit_section(
         "source_draft_id": str(draft_id),
         "changed": True,
     }
+
+
+ExportModeQ = Annotated[
+    Literal["filing", "client", "internal"],
+    Query(description="filing excludes Sec 13+14; client excludes Sec 13; internal includes all"),
+]
+
+
+@router.get("/drafts/{draft_id}/export")
+async def export_draft(
+    ctx: CurrentContext, draft_id: UUID, mode: ExportModeQ = "filing"
+) -> Response:
+    """Return the draft rendered as .docx (Times New Roman A4, no hyperlinks).
+
+    Audit-logs draft.exported with mode + version so partners can see who
+    pulled which version for filing.
+    """
+    row = (
+        await ctx.session.execute(
+            text(
+                """
+                SELECT d.draft_id, d.version, d.sections, d.internal_partner_note,
+                       d.matter_id,
+                       c.legal_name AS client_legal_name, c.pan AS client_pan,
+                       r.registration_type, r.identifier_value, r.state_name,
+                       n.document_type, n.authority, n.due_date,
+                       n.financial_year, n.assessment_year,
+                       t.legal_name AS firm_name
+                FROM drafts d
+                JOIN matters m ON m.matter_id = d.matter_id
+                JOIN clients c ON c.client_id = m.client_id
+                JOIN client_registrations r ON r.registration_id = m.registration_id
+                JOIN tenants t ON t.tenant_id = d.tenant_id
+                LEFT JOIN notices n ON n.matter_id = m.matter_id
+                    AND n.lifecycle_status <> 'closed'
+                WHERE d.draft_id = :did
+                ORDER BY n.due_date ASC NULLS LAST
+                LIMIT 1
+                """
+            ),
+            {"did": str(draft_id)},
+        )
+    ).mappings().first()
+    if row is None:
+        raise NotFoundError("draft not found")
+
+    reg_label = "GSTIN" if row["registration_type"] == "GST" else "Registration"
+    reg_id = row["identifier_value"]
+    if row["registration_type"] == "GST" and row["state_name"]:
+        reg_id = f"{row['identifier_value']} · {row['state_name']}"
+
+    period = (
+        f"FY {row['financial_year']}"
+        if row["financial_year"]
+        else (f"AY {row['assessment_year']}" if row["assessment_year"] else "—")
+    )
+    cover = CoverSheetData(
+        firm_name=row["firm_name"],
+        client_legal_name=row["client_legal_name"],
+        client_pan=row["client_pan"],
+        registration_label=reg_label,
+        registration_identifier=reg_id,
+        notice_type=row["document_type"],
+        fy_or_ay=period,
+        authority=row["authority"],
+        due_date=row["due_date"].isoformat() if row["due_date"] else None,
+    )
+
+    blob = render_draft_docx(
+        mode=mode,
+        cover=cover,
+        sections=row["sections"] or [],
+        internal_partner_note=row["internal_partner_note"],
+    )
+
+    await audit.emit(
+        ctx.session,
+        tenant_id=ctx.claims.tenant_id,
+        user_id=ctx.claims.user_id,
+        action_type="draft.exported",
+        entity_type="drafts",
+        entity_id=draft_id,
+        after_state={"mode": mode, "version": row["version"], "bytes": len(blob)},
+        risk_tier=1,
+    )
+    await ctx.session.commit()
+
+    safe_client = (
+        "".join(ch if ch.isalnum() else "_" for ch in row["client_legal_name"])[:40]
+        or "client"
+    )
+    filename = (
+        f"{safe_client}_v{row['version']}_{mode}.docx"
+    )
+    return Response(
+        content=blob,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -56,8 +56,13 @@ export async function proxyToApi(
   const upstream = await fetch(target.toString(), fetchInit);
   const contentType = upstream.headers.get("content-type") ?? "application/json";
   const responseBody = await upstream.arrayBuffer();
+  const responseHeaders: Record<string, string> = { "content-type": contentType };
+  // Pass through Content-Disposition so .docx exports trigger a native
+  // file download in the browser instead of rendering as bytes.
+  const cd = upstream.headers.get("content-disposition");
+  if (cd) responseHeaders["content-disposition"] = cd;
   return new NextResponse(responseBody, {
     status: upstream.status,
-    headers: { "content-type": contentType },
+    headers: responseHeaders,
   });
 }
