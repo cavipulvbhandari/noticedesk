@@ -684,7 +684,7 @@ async def notice_timeline(ctx: CurrentContext, notice_id: UUID) -> dict[str, Any
         await ctx.session.execute(
             text(
                 """
-                SELECT a.audit_id, a.timestamp, a.action_type,
+                SELECT a.log_id AS audit_id, a.timestamp, a.action_type,
                        a.before_state, a.after_state, a.risk_tier,
                        u.name AS user_name, u.role AS user_role
                 FROM audit_logs a
