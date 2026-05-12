@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Inbox, LayoutDashboard, Upload, Users } from "lucide-react";
+import { Calendar, Inbox, LayoutDashboard, Upload, Users } from "lucide-react";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/clients", label: "Clients", icon: Users },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
 ];
 
 export function Sidebar() {
