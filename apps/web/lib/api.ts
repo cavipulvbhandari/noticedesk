@@ -198,6 +198,74 @@ export async function deleteClient(id: string): Promise<{ deleted: true }> {
   return (await res.json()) as { deleted: true };
 }
 
+export interface RegistrationNotice {
+  notice_id: string;
+  document_type: string | null;
+  due_date: string | null;
+  hearing_date: string | null;
+  authority: string | null;
+  financial_year: string | null;
+  assessment_year: string | null;
+  lifecycle_status: string;
+  ingest_channel: string;
+  din_or_rfn: string | null;
+  issue: string | null;
+  assigned_to: string | null;
+}
+
+export interface RegistrationNoticesResponse {
+  registration: {
+    registration_id: string;
+    registration_type: "IT" | "GST";
+    identifier_value: string;
+    state_code: string | null;
+    state_name: string | null;
+    jurisdiction_office: string | null;
+    registration_status: string | null;
+    sync_method: "manual" | "portal";
+    last_synced_at: string | null;
+  };
+  client: {
+    client_id: string;
+    legal_name: string;
+    pan: string;
+  };
+  notices: RegistrationNotice[];
+  total: number;
+}
+
+export async function fetchRegistrationNotices(
+  registrationId: string,
+): Promise<RegistrationNoticesResponse> {
+  const res = await fetch(`/api/registrations/${registrationId}/notices`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`failed to load notices (${res.status})`);
+  return (await res.json()) as RegistrationNoticesResponse;
+}
+
+export interface UpdateRegistrationBody {
+  jurisdiction_office?: string | null;
+  state_name?: string | null;
+  registration_status?: "active" | "suspended" | "cancelled" | "surrendered";
+}
+
+export async function updateRegistration(
+  registrationId: string,
+  body: UpdateRegistrationBody,
+): Promise<{ registration_id: string; updated_fields: string[] }> {
+  const res = await fetch(`/api/registrations/${registrationId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `update failed (${res.status})`);
+  }
+  return (await res.json()) as { registration_id: string; updated_fields: string[] };
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";
