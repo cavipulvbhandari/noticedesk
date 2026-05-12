@@ -1,11 +1,14 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { YearGroup } from "@/components/clients/year-group";
+import { AddNoticeModal } from "@/components/matters/add-notice-modal";
 import { Button } from "@/components/ui/button";
 import { InfoModal } from "@/components/ui/info-modal";
+import { useToast } from "@/components/ui/toast";
 import {
   fetchClient,
   fetchRegistrationNotices,
@@ -19,33 +22,33 @@ interface Props {
 
 export default function ClientGstDrilldownPage({ params }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [data, setData] = useState<RegistrationNoticesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const [c, n] = await Promise.all([
+        fetchClient(params.id),
+        fetchRegistrationNotices(params.regId),
+      ]);
+      setClient(c);
+      setData(n);
+      setError(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id, params.regId]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [c, n] = await Promise.all([
-          fetchClient(params.id),
-          fetchRegistrationNotices(params.regId),
-        ]);
-        if (cancelled) return;
-        setClient(c);
-        setData(n);
-      } catch (e: unknown) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "failed to load");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [params.id, params.regId]);
+    void load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -116,9 +119,15 @@ export default function ClientGstDrilldownPage({ params }: Props) {
             />
             {isPortal ? "Connected to GST portal" : "Not connected to GST portal"}
           </span>
-          <Button variant="ghost" size="sm" onClick={() => setSyncInfo(true)}>
-            {isPortal ? "⟲ Sync now" : "⚡ Connect portal"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSyncInfo(true)}>
+              {isPortal ? "⟲ Sync now" : "⚡ Connect portal"}
+            </Button>
+            <Button variant="gold" size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              Add notice
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -155,6 +164,20 @@ export default function ClientGstDrilldownPage({ params }: Props) {
           your firm&rsquo;s ingestion address.
         </p>
       </InfoModal>
+
+      <AddNoticeModal
+        open={addOpen}
+        clientId={client.client_id}
+        registrationId={reg.registration_id}
+        law="GST"
+        onClose={() => setAddOpen(false)}
+        onCreated={(noticeId) => {
+          toast("Notice added", "success");
+          setAddOpen(false);
+          void load();
+          router.push(`/matters/${noticeId}`);
+        }}
+      />
     </main>
   );
 }

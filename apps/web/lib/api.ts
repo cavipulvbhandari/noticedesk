@@ -329,6 +329,163 @@ export async function fetchStatusCounts(): Promise<StatusCounts> {
   return (await res.json()) as StatusCounts;
 }
 
+export interface NoticeDetail {
+  notice: {
+    notice_id: string;
+    matter_id: string;
+    law: "GST" | "IT";
+    document_type: string | null;
+    notice_number: string | null;
+    din_or_rfn: string | null;
+    issue_date: string | null;
+    receipt_date: string | null;
+    due_date: string | null;
+    hearing_date: string | null;
+    authority: string | null;
+    financial_year: string | null;
+    assessment_year: string | null;
+    issues: unknown;
+    documents_required: unknown;
+    lifecycle_status: string;
+    ingest_channel: string;
+    demand_amount: number | null;
+    source_inbox_id: string | null;
+    pan_gstin_reconciliation_status: string | null;
+    parse_confidence: number | null;
+    verification_status: string | null;
+    issue: string | null;
+    assigned_to: string | null;
+    raw_extracted_json: Record<string, unknown> | null;
+    manual_corrections_json: Record<string, unknown> | null;
+    created_at: string | null;
+    updated_at: string | null;
+  };
+  client: {
+    client_id: string;
+    legal_name: string;
+    pan: string;
+    entity_type: string | null;
+    industry: string | null;
+  };
+  registration: {
+    registration_id: string;
+    registration_type: "IT" | "GST";
+    identifier_value: string;
+    state_code: string | null;
+    state_name: string | null;
+    jurisdiction_office: string | null;
+  };
+}
+
+export async function fetchNotice(id: string): Promise<NoticeDetail> {
+  const res = await fetch(`/api/notices/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load notice (${res.status})`);
+  return (await res.json()) as NoticeDetail;
+}
+
+export interface UpdateNoticeBody {
+  document_type?: string;
+  notice_number?: string;
+  din_or_rfn?: string;
+  due_date?: string;
+  issue_date?: string;
+  hearing_date?: string;
+  authority?: string;
+  demand_amount?: number;
+}
+
+export async function updateNotice(
+  id: string,
+  body: UpdateNoticeBody,
+): Promise<{ notice_id: string; updated_fields: string[] }> {
+  const res = await fetch(`/api/notices/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `update failed (${res.status})`);
+  }
+  return (await res.json()) as { notice_id: string; updated_fields: string[] };
+}
+
+export interface TransitionLifecycleBody {
+  lifecycle_status: string;
+  reason?: string;
+}
+
+export async function transitionLifecycle(
+  id: string,
+  body: TransitionLifecycleBody,
+): Promise<{ notice_id: string; lifecycle_status: string; changed: boolean }> {
+  const res = await fetch(`/api/notices/${id}/lifecycle`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `transition failed (${res.status})`);
+  }
+  return (await res.json()) as {
+    notice_id: string;
+    lifecycle_status: string;
+    changed: boolean;
+  };
+}
+
+export interface TimelineEvent {
+  audit_id: string;
+  timestamp: string;
+  action_type: string;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
+  risk_tier: number | null;
+  user_name: string | null;
+  user_role: string | null;
+}
+
+export async function fetchTimeline(
+  id: string,
+): Promise<{ events: TimelineEvent[]; total: number }> {
+  const res = await fetch(`/api/notices/${id}/timeline`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load timeline (${res.status})`);
+  return (await res.json()) as { events: TimelineEvent[]; total: number };
+}
+
+export interface CreateNoticeBody {
+  client_id: string;
+  registration_id: string;
+  law: "GST" | "IT";
+  document_type: string;
+  due_date?: string;
+  issue_date?: string;
+  hearing_date?: string;
+  financial_year?: string;
+  assessment_year?: string;
+  authority?: string;
+  din_or_rfn?: string;
+  notice_number?: string;
+  issue?: string;
+  assigned_to?: string;
+}
+
+export async function createNotice(
+  body: CreateNoticeBody,
+): Promise<{ notice_id: string; matter_id: string }> {
+  const res = await fetch("/api/notices", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `create failed (${res.status})`);
+  }
+  return (await res.json()) as { notice_id: string; matter_id: string };
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";

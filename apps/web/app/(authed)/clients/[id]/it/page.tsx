@@ -1,9 +1,13 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { YearGroup } from "@/components/clients/year-group";
+import { AddNoticeModal } from "@/components/matters/add-notice-modal";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { fetchClient, fetchRegistrationNotices, type RegistrationNoticesResponse } from "@/lib/api";
 
 interface Props {
@@ -12,32 +16,33 @@ interface Props {
 
 export default function ClientITDrilldownPage({ params }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const [data, setData] = useState<RegistrationNoticesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const client = await fetchClient(params.id);
+      const itReg = client.registrations.find((r) => r.registration_type === "IT");
+      if (!itReg) {
+        setError("No Income Tax registration found for this client");
+        return;
+      }
+      const next = await fetchRegistrationNotices(itReg.registration_id);
+      setData(next);
+      setError(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const client = await fetchClient(params.id);
-        const itReg = client.registrations.find((r) => r.registration_type === "IT");
-        if (!itReg) {
-          if (!cancelled) setError("No Income Tax registration found for this client");
-          return;
-        }
-        const next = await fetchRegistrationNotices(itReg.registration_id);
-        if (!cancelled) setData(next);
-      } catch (e: unknown) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "failed to load");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [params.id]);
+    void load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -95,13 +100,17 @@ export default function ClientITDrilldownPage({ params }: Props) {
             {years.length} {years.length === 1 ? "year" : "years"}
           </p>
         </div>
+        <Button variant="gold" size="sm" onClick={() => setAddOpen(true)}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+          Add notice manually
+        </Button>
       </header>
 
       {years.length === 0 ? (
         <div className="rounded-md border border-dashed border-slate-line bg-white p-10 text-center">
           <p className="font-serif text-[16px] text-navy-deep">No notices yet</p>
           <p className="mt-1 text-sm text-slate">
-            Upload an IT notice from the inbox to start a record here.
+            Upload an IT notice from the inbox or add one manually.
           </p>
         </div>
       ) : (
@@ -113,6 +122,20 @@ export default function ClientITDrilldownPage({ params }: Props) {
           />
         ))
       )}
+
+      <AddNoticeModal
+        open={addOpen}
+        clientId={data.client.client_id}
+        registrationId={data.registration.registration_id}
+        law="IT"
+        onClose={() => setAddOpen(false)}
+        onCreated={(noticeId) => {
+          toast("Notice added", "success");
+          setAddOpen(false);
+          void load();
+          router.push(`/matters/${noticeId}`);
+        }}
+      />
     </main>
   );
 }
