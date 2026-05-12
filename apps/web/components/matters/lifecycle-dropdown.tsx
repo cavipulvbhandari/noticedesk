@@ -99,46 +99,27 @@ export function LifecycleDropdown({ current, disabled, onTransition }: Props) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-40 mt-2 w-[300px] rounded-md border border-slate-line bg-white p-3 shadow-card-lg">
-          <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-slate">
-            Move to
-          </p>
-          <ul className="mb-2 max-h-[200px] space-y-1 overflow-y-auto">
-            {TARGETS.filter((t) => t !== current).map((t) => (
-              <li key={t}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPicked(t);
-                    setError(null);
-                  }}
-                  className={cn(
-                    "w-full rounded-sm px-2.5 py-1.5 text-left text-[13px] transition-colors",
-                    picked === t
-                      ? "bg-navy text-paper"
-                      : "text-ink hover:bg-paper",
-                  )}
-                >
-                  {LIFECYCLE_LABELS[t]}
-                  {REASON_REQUIRED.has(t) ? (
-                    <span className="ml-1.5 text-[10px] uppercase tracking-wide text-slate-soft">
-                      reason required
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-
+        <div className="absolute right-0 top-full z-40 mt-2 w-[320px] rounded-md border border-slate-line bg-white p-3 shadow-card-lg">
           {picked ? (
+            // Step 2 — confirm. We collapse the list so the Confirm button
+            // is unambiguous; clicking a state in the list previously left
+            // the action hidden below the scroll boundary.
             <>
+              <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-slate">
+                Move to
+              </p>
+              <p className="mb-3 font-serif text-[16px] font-semibold text-navy-deep">
+                {LIFECYCLE_LABELS[picked as Lifecycle] ?? picked}
+              </p>
+
               <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.06em] text-slate">
-                Reason {REASON_REQUIRED.has(picked) ? <span className="text-alarm">*</span> : null}
+                Reason {REASON_REQUIRED.has(picked) ? <span className="text-alarm">*</span> : <span className="text-slate-soft">(optional)</span>}
               </label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                rows={2}
+                rows={3}
+                autoFocus
                 placeholder={
                   REASON_REQUIRED.has(picked)
                     ? "e.g. Reply filed with department on 2026-05-10"
@@ -149,7 +130,7 @@ export function LifecycleDropdown({ current, disabled, onTransition }: Props) {
               {error ? (
                 <p className="mb-2 text-[11px] text-alarm">{error}</p>
               ) : null}
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -157,22 +138,50 @@ export function LifecycleDropdown({ current, disabled, onTransition }: Props) {
                     setReason("");
                     setError(null);
                   }}
-                  className="rounded-sm px-3 py-1 text-[12px] font-medium text-slate hover:bg-paper"
+                  className="rounded-sm px-3 py-1.5 text-[12px] font-medium text-slate hover:bg-paper"
                   disabled={busy}
                 >
-                  Cancel
+                  ← Back
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirm}
                   disabled={busy}
-                  className="rounded-sm bg-navy px-3 py-1 text-[12px] font-semibold text-paper hover:bg-navy-deep disabled:opacity-60"
+                  className="rounded-sm bg-navy px-4 py-1.5 text-[12px] font-semibold text-paper hover:bg-navy-deep disabled:opacity-60"
                 >
-                  {busy ? "Saving…" : "Confirm"}
+                  {busy ? "Saving…" : "Confirm transition"}
                 </button>
               </div>
             </>
-          ) : null}
+          ) : (
+            // Step 1 — list of target states.
+            <>
+              <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-slate">
+                Move to
+              </p>
+              <ul className="max-h-[280px] space-y-1 overflow-y-auto">
+                {TARGETS.filter((t) => t !== current).map((t) => (
+                  <li key={t}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPicked(t);
+                        setError(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-sm px-2.5 py-2 text-left text-[13px] text-ink transition-colors hover:bg-paper"
+                    >
+                      <span>{LIFECYCLE_LABELS[t]}</span>
+                      {REASON_REQUIRED.has(t) ? (
+                        <span className="text-[9.5px] uppercase tracking-wide text-slate-soft">
+                          reason required
+                        </span>
+                      ) : null}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       ) : null}
     </div>
