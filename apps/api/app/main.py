@@ -12,6 +12,7 @@ from app.core.logging import configure_logging
 from app.routes import (
     clients,
     documents,
+    drafts,
     email,
     health,
     notices,
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(clients.router, prefix="/v1")
     app.include_router(registrations.router, prefix="/v1")
     app.include_router(notices.router, prefix="/v1")
+    app.include_router(drafts.router, prefix="/v1")
     app.include_router(search.router, prefix="/v1")
 
     return app

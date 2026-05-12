@@ -517,6 +517,128 @@ export async function logout(): Promise<void> {
   await fetch("/api/logout", { method: "POST" });
 }
 
+// ---- Drafts (Sprint 5) ----------------------------------------------------
+
+export interface DraftSection {
+  num: number;
+  title: string;
+  body_html: string;
+}
+
+export interface DraftCitation {
+  citation_id: string;
+  case_name: string;
+  citation_string: string | null;
+  paragraph_referenced: string | null;
+  proposition_for_which_cited: string | null;
+  status: "VERIFIED" | "VERIFIED_PARTIAL" | "UNVERIFIED" | "STRIPPED";
+  source_url: string | null;
+  verification_tier: number | null;
+  verified_paragraph_text: string | null;
+  proposition_match_confidence: number | null;
+  verified_at: string | null;
+  action_taken: "passed" | "flagged" | "stripped" | null;
+}
+
+export interface DraftSummary {
+  draft_id: string;
+  version: number;
+  status: string;
+  tone: string | null;
+  model_used: string | null;
+  prompt_version: string | null;
+  citation_summary: Record<string, number> | null;
+  generated_at: string | null;
+  generated_by_name: string | null;
+}
+
+export interface DraftDetail extends DraftSummary {
+  matter_id: string;
+  sections: DraftSection[];
+  paragraph_to_source_map: Array<Record<string, unknown>>;
+  internal_partner_note: string | null;
+  edits_log: Array<Record<string, unknown>>;
+  citations: DraftCitation[];
+}
+
+export interface GenerateDraftBody {
+  tone?: "formal" | "assertive" | "conciliatory";
+  partner_instructions?: string;
+  include_cross_registration?: boolean;
+}
+
+export async function generateDraft(
+  noticeId: string,
+  body: GenerateDraftBody,
+): Promise<{
+  draft_id: string;
+  version: number;
+  citation_summary: Record<string, number>;
+  sections_kept: number;
+}> {
+  const res = await fetch(`/api/notices/${noticeId}/draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `draft generation failed (${res.status})`);
+  }
+  return (await res.json()) as {
+    draft_id: string;
+    version: number;
+    citation_summary: Record<string, number>;
+    sections_kept: number;
+  };
+}
+
+export async function fetchDraftVersions(
+  matterId: string,
+): Promise<{ drafts: DraftSummary[]; total: number }> {
+  const res = await fetch(`/api/matters/${matterId}/drafts`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load drafts (${res.status})`);
+  return (await res.json()) as { drafts: DraftSummary[]; total: number };
+}
+
+export async function fetchDraft(id: string): Promise<DraftDetail> {
+  const res = await fetch(`/api/drafts/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load draft (${res.status})`);
+  return (await res.json()) as DraftDetail;
+}
+
+export interface EditDraftSectionBody {
+  section_num: number;
+  body_html: string;
+  internal_partner_note?: string;
+}
+
+export async function editDraftSection(
+  draftId: string,
+  body: EditDraftSectionBody,
+): Promise<{
+  draft_id: string;
+  version?: number;
+  source_draft_id?: string;
+  changed: boolean;
+}> {
+  const res = await fetch(`/api/drafts/${draftId}/section`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `edit failed (${res.status})`);
+  }
+  return (await res.json()) as {
+    draft_id: string;
+    version?: number;
+    source_draft_id?: string;
+    changed: boolean;
+  };
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";
