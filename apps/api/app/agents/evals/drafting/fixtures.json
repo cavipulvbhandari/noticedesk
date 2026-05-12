@@ -1,0 +1,297 @@
+[
+  {
+    "id": "asmt10-acme-mh-fy22-23",
+    "scenario": "Acme Industries Maharashtra ASMT-10 — ITC mismatch FY 22-23",
+    "input": {
+      "law": "GST",
+      "client_legal_name": "Acme Industries Private Limited",
+      "client_pan": "AAACA9876B",
+      "client_entity_type": "Private Limited Company",
+      "registration_type": "GST",
+      "registration_identifier": "27AAACA9876B1Z5",
+      "registration_state_name": "Maharashtra",
+      "financial_year": "2022-23",
+      "tone": "formal",
+      "notice": {
+        "document_type": "ASMT-10",
+        "din_or_rfn": "DIN20260117ASMT10004587",
+        "due_date": "2026-05-17",
+        "authority": "STO Range 5, Pune-1",
+        "issue": "ITC mismatch FY 22-23, ₹14.2 lakh"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "required_section_titles": [
+        "Executive Summary",
+        "Notice Understanding",
+        "Factual Background",
+        "Issue-wise Response",
+        "Legal Submissions",
+        "Documents Enclosed",
+        "Prayer",
+        "Filing Checklist"
+      ],
+      "must_mention_substrings": [
+        "Acme Industries Private Limited",
+        "AAACA9876B",
+        "27AAACA9876B1Z5",
+        "2022-23"
+      ],
+      "must_not_mention_substrings": [
+        "24AAACA9876B1Z3",
+        "29AAACA9876B1Z9",
+        "Gujarat",
+        "Karnataka"
+      ],
+      "skipped_sections": ["Cross-Examination Request"]
+    }
+  },
+  {
+    "id": "asmt10-acme-gj-fy23-24",
+    "scenario": "Acme Industries Gujarat ASMT-10 — outward supply discrepancy FY 23-24",
+    "input": {
+      "law": "GST",
+      "client_legal_name": "Acme Industries Private Limited",
+      "client_pan": "AAACA9876B",
+      "client_entity_type": "Private Limited Company",
+      "registration_type": "GST",
+      "registration_identifier": "24AAACA9876B1Z3",
+      "registration_state_name": "Gujarat",
+      "financial_year": "2023-24",
+      "tone": "formal",
+      "notice": {
+        "document_type": "ASMT-10",
+        "din_or_rfn": "DIN20260121ASMT10004722",
+        "due_date": "2026-05-23",
+        "authority": "STO Surat-1",
+        "issue": "Outward supply discrepancy, ₹6.8 lakh"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": [
+        "24AAACA9876B1Z3",
+        "Gujarat"
+      ],
+      "must_not_mention_substrings": [
+        "27AAACA9876B1Z5",
+        "29AAACA9876B1Z9",
+        "Maharashtra",
+        "Karnataka"
+      ]
+    }
+  },
+  {
+    "id": "drc01a-acme-mh-fy23-24",
+    "scenario": "Acme Industries Maharashtra DRC-01A — excess ITC reversal",
+    "input": {
+      "law": "GST",
+      "client_legal_name": "Acme Industries Private Limited",
+      "client_pan": "AAACA9876B",
+      "client_entity_type": "Private Limited Company",
+      "registration_type": "GST",
+      "registration_identifier": "27AAACA9876B1Z5",
+      "registration_state_name": "Maharashtra",
+      "financial_year": "2023-24",
+      "tone": "assertive",
+      "notice": {
+        "document_type": "DRC-01A",
+        "din_or_rfn": "DRC0124MH0011928",
+        "due_date": "2026-05-22",
+        "authority": "STO Range 5, Pune-1",
+        "issue": "Excess ITC reversal, ₹3.4 lakh"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": ["Acme", "AAACA9876B", "27AAACA9876B1Z5"]
+    }
+  },
+  {
+    "id": "drc01-acme-mh-fy21-22",
+    "scenario": "Acme Industries Maharashtra DRC-01 — fake vendor allegation",
+    "input": {
+      "law": "GST",
+      "client_legal_name": "Acme Industries Private Limited",
+      "client_pan": "AAACA9876B",
+      "client_entity_type": "Private Limited Company",
+      "registration_type": "GST",
+      "registration_identifier": "27AAACA9876B1Z5",
+      "registration_state_name": "Maharashtra",
+      "financial_year": "2021-22",
+      "tone": "assertive",
+      "notice": {
+        "document_type": "DRC-01",
+        "din_or_rfn": "DRC0122MH0007124",
+        "due_date": "2026-05-04",
+        "authority": "Joint Commissioner, Mumbai South",
+        "issue": "ITC denial — fake vendor allegation, ₹22.7 lakh"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": ["Acme", "AAACA9876B", "27AAACA9876B1Z5"]
+    }
+  },
+  {
+    "id": "gst-hearing-acme-mh",
+    "scenario": "Acme Industries Maharashtra GST personal hearing — DRC-01 reply",
+    "input": {
+      "law": "GST",
+      "client_legal_name": "Acme Industries Private Limited",
+      "client_pan": "AAACA9876B",
+      "client_entity_type": "Private Limited Company",
+      "registration_type": "GST",
+      "registration_identifier": "27AAACA9876B1Z5",
+      "registration_state_name": "Maharashtra",
+      "financial_year": "2021-22",
+      "tone": "formal",
+      "notice": {
+        "document_type": "GST_HEARING",
+        "din_or_rfn": null,
+        "due_date": "2026-05-15",
+        "authority": "Joint Commissioner, Mumbai South",
+        "issue": "Personal hearing scheduled — DRC-01 reply"
+      }
+    },
+    "expectations": {
+      "min_sections": 13,
+      "required_section_titles": ["Cross-Examination Request"]
+    }
+  },
+  {
+    "id": "it-142-1-acme-ay24-25",
+    "scenario": "Acme IT 142(1) — large cash transactions",
+    "input": {
+      "law": "IT",
+      "client_legal_name": "Acme Industries Private Limited",
+      "client_pan": "AAACA9876B",
+      "client_entity_type": "Private Limited Company",
+      "registration_type": "IT",
+      "registration_identifier": "AAACA9876B",
+      "registration_state_name": null,
+      "assessment_year": "2024-25",
+      "tone": "formal",
+      "notice": {
+        "document_type": "IT_142(1)",
+        "din_or_rfn": "ITBA/ASS/F/142(1)/2025-26/0001",
+        "due_date": "2026-05-19",
+        "authority": "ACIT Circle 3(1), Mumbai",
+        "issue": "Information requisition — large cash transactions"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": ["AAACA9876B", "2024-25"],
+      "must_not_mention_substrings": ["27AAACA9876B1Z5", "Maharashtra"]
+    }
+  },
+  {
+    "id": "it-143-2-sunteck-ay23-24",
+    "scenario": "Sunteck IT 143(2) scrutiny — interest disallowance",
+    "input": {
+      "law": "IT",
+      "client_legal_name": "Sunteck Realty Holdings Ltd",
+      "client_pan": "AABCS5678C",
+      "client_entity_type": "Public Limited Company",
+      "registration_type": "IT",
+      "registration_identifier": "AABCS5678C",
+      "registration_state_name": null,
+      "assessment_year": "2023-24",
+      "tone": "assertive",
+      "notice": {
+        "document_type": "IT_143(2)",
+        "din_or_rfn": "ITBA/ASS/F/143(2)/2025-26/0033",
+        "due_date": "2026-06-02",
+        "authority": "ACIT Central Circle, Mumbai",
+        "issue": "Scrutiny — interest disallowance §36(1)(iii)"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": ["Sunteck", "AABCS5678C", "2023-24"],
+      "must_not_mention_substrings": ["AAACA9876B", "Acme"]
+    }
+  },
+  {
+    "id": "it-148-sunteck-ay20-21",
+    "scenario": "Sunteck IT 148 reassessment — share capital under §68",
+    "input": {
+      "law": "IT",
+      "client_legal_name": "Sunteck Realty Holdings Ltd",
+      "client_pan": "AABCS5678C",
+      "client_entity_type": "Public Limited Company",
+      "registration_type": "IT",
+      "registration_identifier": "AABCS5678C",
+      "registration_state_name": null,
+      "assessment_year": "2020-21",
+      "tone": "assertive",
+      "notice": {
+        "document_type": "IT_148_148A",
+        "din_or_rfn": "ITBA/AST/F/148A/2025-26/0019",
+        "due_date": "2026-05-10",
+        "authority": "ACIT Central Circle, Mumbai",
+        "issue": "Reassessment — share capital under §68"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": ["Sunteck", "AABCS5678C"]
+    }
+  },
+  {
+    "id": "asmt10-patil-mh-fy23-24",
+    "scenario": "Patil Trading Maharashtra ASMT-10 — turnover under-declaration",
+    "input": {
+      "law": "GST",
+      "client_legal_name": "Patil Trading Company",
+      "client_pan": "APBPP1234D",
+      "client_entity_type": "Partnership Firm",
+      "registration_type": "GST",
+      "registration_identifier": "27APBPP1234D1Z2",
+      "registration_state_name": "Maharashtra",
+      "financial_year": "2023-24",
+      "tone": "conciliatory",
+      "notice": {
+        "document_type": "ASMT-10",
+        "din_or_rfn": "DIN20260120ASMT10004659",
+        "due_date": "2026-05-18",
+        "authority": "STO Range 7, Mumbai",
+        "issue": "Turnover under-declaration, ₹3.1 lakh"
+      }
+    },
+    "expectations": {
+      "min_sections": 12,
+      "must_mention_substrings": ["Patil", "APBPP1234D", "Maharashtra"],
+      "must_not_mention_substrings": ["33APBPP1234D1Z6", "Tamil Nadu"]
+    }
+  },
+  {
+    "id": "it-cita-anjali-ay21-22",
+    "scenario": "Dr. Anjali Kapoor IT CIT(A) hearing — capital gains on flat sale",
+    "input": {
+      "law": "IT",
+      "client_legal_name": "Dr. Anjali Kapoor",
+      "client_pan": "AANPK7890F",
+      "client_entity_type": "Individual (Proprietor)",
+      "registration_type": "IT",
+      "registration_identifier": "AANPK7890F",
+      "registration_state_name": null,
+      "assessment_year": "2021-22",
+      "tone": "formal",
+      "notice": {
+        "document_type": "IT_CITA_NFAC_HEARING",
+        "din_or_rfn": "ITBA/CITA/F/AY2122/0512",
+        "due_date": "2026-05-26",
+        "authority": "CIT(A) NFAC",
+        "issue": "Appeal — capital gains on flat sale"
+      }
+    },
+    "expectations": {
+      "min_sections": 13,
+      "must_mention_substrings": ["Anjali", "AANPK7890F", "2021-22"],
+      "required_section_titles": ["Cross-Examination Request"]
+    }
+  }
+]
