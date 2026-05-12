@@ -639,6 +639,69 @@ export async function editDraftSection(
   };
 }
 
+// ---- Matter documents (Sprint 5 slice 8) ---------------------------------
+
+export type DocumentLifecycle =
+  | "requested"
+  | "received"
+  | "validated"
+  | "used_in_draft"
+  | "approved"
+  | "submitted"
+  | "acknowledged"
+  | "referenced_in_appeal";
+
+export interface MatterDocument {
+  document_id: string;
+  filename: string;
+  document_type: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  lifecycle_stage: DocumentLifecycle | null;
+  uploaded_at: string | null;
+  uploaded_by_name: string | null;
+}
+
+export async function fetchMatterDocuments(
+  matterId: string,
+): Promise<{ documents: MatterDocument[]; total: number }> {
+  const res = await fetch(`/api/matters/${matterId}/documents`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load documents (${res.status})`);
+  return (await res.json()) as { documents: MatterDocument[]; total: number };
+}
+
+export async function uploadMatterDocument(
+  matterId: string,
+  file: File,
+  documentType = "supporting",
+): Promise<{ document_id: string; filename: string; size_bytes: number }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const url = `/api/matters/${matterId}/documents?document_type=${encodeURIComponent(documentType)}`;
+  const res = await fetch(url, { method: "POST", body: fd });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `upload failed (${res.status})`);
+  }
+  return (await res.json()) as { document_id: string; filename: string; size_bytes: number };
+}
+
+export async function updateDocument(
+  documentId: string,
+  body: { document_type?: string; lifecycle_stage?: DocumentLifecycle },
+): Promise<{ document_id: string; updated_fields: string[] }> {
+  const res = await fetch(`/api/documents/${documentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `update failed (${res.status})`);
+  }
+  return (await res.json()) as { document_id: string; updated_fields: string[] };
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";
