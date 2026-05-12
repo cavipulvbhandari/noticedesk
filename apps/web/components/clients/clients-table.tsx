@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import type { ClientSummary } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
@@ -8,6 +10,7 @@ interface Props {
 }
 
 export function ClientsTable({ clients }: Props) {
+  const router = useRouter();
   return (
     <div className="overflow-hidden rounded-md border border-slate-line bg-white">
       <table className="w-full border-collapse">
@@ -26,6 +29,7 @@ export function ClientsTable({ clients }: Props) {
           {clients.map((c) => (
             <tr
               key={c.client_id}
+              onClick={() => router.push(`/clients/${c.client_id}`)}
               className="cursor-pointer border-b border-slate-line transition-colors last:border-b-0 hover:bg-paper"
             >
               <Td>

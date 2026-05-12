@@ -133,6 +133,71 @@ export async function fetchClients(): Promise<ClientList> {
   return (await res.json()) as ClientList;
 }
 
+export interface ClientRegistration {
+  registration_id: string;
+  registration_type: "IT" | "GST";
+  identifier_value: string;
+  state_code: string | null;
+  state_name: string | null;
+  jurisdiction_office: string | null;
+  registration_status: string | null;
+  active_notice_count: number;
+  earliest_open_due_date: string | null;
+  sync_method: "manual" | "portal";
+  last_synced_at: string | null;
+}
+
+export interface ClientDetail {
+  client_id: string;
+  pan: string;
+  legal_name: string;
+  trade_name: string | null;
+  entity_type: string | null;
+  cin: string | null;
+  date_of_incorporation_or_birth: string | null;
+  industry: string | null;
+  registrations: ClientRegistration[];
+}
+
+export async function fetchClient(id: string): Promise<ClientDetail> {
+  const res = await fetch(`/api/clients/${id}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`failed to load client (${res.status})`);
+  return (await res.json()) as ClientDetail;
+}
+
+export interface UpdateClientBody {
+  legal_name?: string;
+  trade_name?: string | null;
+  entity_type?: string | null;
+  industry?: string | null;
+  cin?: string | null;
+}
+
+export async function updateClient(
+  id: string,
+  body: UpdateClientBody,
+): Promise<{ client_id: string; updated_fields: string[] }> {
+  const res = await fetch(`/api/clients/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `update failed (${res.status})`);
+  }
+  return (await res.json()) as { client_id: string; updated_fields: string[] };
+}
+
+export async function deleteClient(id: string): Promise<{ deleted: true }> {
+  const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `delete failed (${res.status})`);
+  }
+  return (await res.json()) as { deleted: true };
+}
+
 export interface AddRegistrationBody {
   client_id: string;
   registration_type: "IT" | "GST";
