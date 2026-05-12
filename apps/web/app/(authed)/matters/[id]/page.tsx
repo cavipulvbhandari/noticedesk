@@ -117,7 +117,7 @@ export default function MatterPage({ params }: Props) {
 
       {tab === "notice" ? <NoticeTab data={data} /> : null}
       {tab === "documents" ? <DocumentsTab data={data} /> : null}
-      {tab === "draft" ? <DraftTab /> : null}
+      {tab === "draft" ? <DraftTab noticeId={params.id} matterId={notice.matter_id} /> : null}
       {tab === "timeline" ? <TimelineTab noticeId={params.id} /> : null}
     </main>
   );

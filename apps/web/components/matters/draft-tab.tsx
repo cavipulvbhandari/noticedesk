@@ -1,34 +1,149 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useCallback, useEffect, useState } from "react";
 
-// Stub per the brief: "showing 'Generate draft' button (full implementation
-// in Sprint 5)". Clicking it explains what's coming so partners don't think
-// the button is broken.
-export function DraftTab() {
+import { CompareVersionsModal } from "@/components/drafts/compare-versions-modal";
+import { DraftEmptyState } from "@/components/drafts/draft-empty-state";
+import { DraftPane } from "@/components/drafts/draft-pane";
+import { DraftToolbar } from "@/components/drafts/draft-toolbar";
+import { VerificationPanel } from "@/components/drafts/verification-panel";
+import { useToast } from "@/components/ui/toast";
+import {
+  fetchDraft,
+  fetchDraftVersions,
+  generateDraft,
+  type DraftDetail,
+  type DraftSummary,
+} from "@/lib/api";
+
+interface Props {
+  noticeId: string;
+  matterId: string;
+}
+
+export function DraftTab({ noticeId, matterId }: Props) {
   const { toast } = useToast();
-  return (
-    <div className="rounded-md border border-slate-line bg-white px-6 py-10 text-center">
-      <p className="mb-2 font-serif text-[18px] font-semibold text-navy-deep">
-        Draft a reply
-      </p>
-      <p className="mx-auto mb-5 max-w-md font-serif text-[14px] italic text-slate">
-        In Sprint 5 the drafting agent will read the parsed notice, pull
-        relevant authorities, and produce a citation-verified draft you can
-        review and export to Word.
-      </p>
-      <Button
-        variant="gold"
-        onClick={() =>
-          toast(
-            "Draft generation arrives in Sprint 5 (citation-verified output + Word export)",
-            "info",
-          )
+  const [versions, setVersions] = useState<DraftSummary[]>([]);
+  const [draft, setDraft] = useState<DraftDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
+
+  const loadVersions = useCallback(async (): Promise<DraftSummary[]> => {
+    const res = await fetchDraftVersions(matterId);
+    setVersions(res.drafts);
+    return res.drafts;
+  }, [matterId]);
+
+  const loadDraft = useCallback(async (draftId: string) => {
+    const d = await fetchDraft(draftId);
+    setDraft(d);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await loadVersions();
+        if (cancelled) return;
+        if (list.length > 0) {
+          await loadDraft(list[0]!.draft_id);
         }
-      >
-        Generate draft
-      </Button>
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "failed to load draft");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadVersions, loadDraft]);
+
+  async function handleGenerate(
+    tone: "formal" | "assertive" | "conciliatory",
+    instructions: string,
+    includeCross: boolean,
+  ) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await generateDraft(noticeId, {
+        tone,
+        partner_instructions: instructions,
+        include_cross_registration: includeCross,
+      });
+      const list = await loadVersions();
+      await loadDraft(res.draft_id);
+      toast(
+        `Draft v${res.version} generated · ${res.citation_summary.verified ?? 0} verified, ${res.citation_summary.stripped ?? 0} stripped`,
+        "success",
+      );
+      void list;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "draft failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleExport(mode: "filing" | "client" | "internal") {
+    if (!draft) return;
+    // Sprint 5 slice 7 wires the actual /v1/drafts/{id}/export endpoint.
+    window.open(`/api/drafts/${draft.draft_id}/export?mode=${mode}`, "_blank");
+  }
+
+  if (loading) {
+    return <p className="py-12 text-center font-serif italic text-slate">Loading draft…</p>;
+  }
+
+  if (versions.length === 0 || !draft) {
+    return (
+      <DraftEmptyState
+        busy={busy}
+        error={error}
+        onGenerate={handleGenerate}
+      />
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-md border border-slate-line bg-white">
+      <DraftToolbar
+        current={draft}
+        versions={versions}
+        onPickVersion={(id) => void loadDraft(id)}
+        onCompare={() => setCompareOpen(true)}
+        onRegenerate={() => {
+          // Re-open the empty-state-ish CTA inline: easiest UX is to scroll
+          // to it. For Phase 1 we just call generate with default tone.
+          void handleGenerate("formal", "", false);
+        }}
+        onExport={handleExport}
+        busy={busy}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr]" style={{ minHeight: 600 }}>
+        <DraftPane
+          draftId={draft.draft_id}
+          sections={draft.sections}
+          internalPartnerNote={draft.internal_partner_note}
+          onSaved={(newId) => {
+            void (async () => {
+              await loadVersions();
+              await loadDraft(newId);
+            })();
+          }}
+        />
+        <VerificationPanel draft={draft} />
+      </div>
+
+      <CompareVersionsModal
+        open={compareOpen}
+        versions={versions}
+        currentDraftId={draft.draft_id}
+        onClose={() => setCompareOpen(false)}
+      />
     </div>
   );
 }
