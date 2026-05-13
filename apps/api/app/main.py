@@ -11,6 +11,7 @@ from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.routes import (
     clients,
+    demo,
     documents,
     documents_matters,
     drafts,
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(drafts.router, prefix="/v1")
     app.include_router(documents_matters.router, prefix="/v1")
     app.include_router(search.router, prefix="/v1")
+    app.include_router(demo.router, prefix="/v1")
 
     return app
 

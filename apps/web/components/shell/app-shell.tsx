@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Sidebar } from "@/components/sidebar";
+import { DemoBanner } from "@/components/shell/demo-banner";
 import { Topbar } from "@/components/shell/topbar";
 import { fetchInbox } from "@/lib/api";
 
@@ -34,6 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <Sidebar inboxAwaiting={awaiting} />
       <div className="flex min-h-screen flex-1 flex-col">
+        <DemoBanner />
         <Topbar awaitingCount={awaiting} />
         <div className="flex-1">{children}</div>
       </div>

@@ -28,6 +28,14 @@ dev = [
     "ruff>=0.4.0",
     "mypy>=1.10.0",
 ]
+# Real LLM providers — installed only when you flip LLM_PROVIDER_PRIMARY
+# away from the stub. Keeps the default install slim for CI / contributors.
+anthropic = [
+    "anthropic>=0.34.0",
+]
+openai = [
+    "openai>=1.40.0",
+]
 
 [tool.ruff]
 line-length = 100
