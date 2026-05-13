@@ -20,7 +20,7 @@ from typing import Any, Final
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.services.identity import PAN_REGEX, GSTIN_REGEX, validate_pan_format, validate_gstin_format
+from app.services.identity import validate_gstin_format, validate_pan_format
 from app.services.llm import (
     JsonSchemaValidationError,
     LLMError,

@@ -43,7 +43,7 @@ class GoogleDocumentAIProvider(OCRProvider):
                 self._call_api(file_bytes, mime_type),
                 timeout=self._timeout,
             )
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise OCRTransientError(f"google_doc_ai timed out after {self._timeout}s") from e
         return ExtractedDoc(
             text=text,
@@ -58,7 +58,9 @@ class GoogleDocumentAIProvider(OCRProvider):
         client = self._client
         if client is None:
             try:
-                from google.cloud import documentai_v1 as documentai  # type: ignore[import-not-found]
+                from google.cloud import (
+                    documentai_v1 as documentai,  # type: ignore[import-not-found]
+                )
             except ImportError as e:
                 raise OCRError(
                     "google-cloud-documentai not installed; either install it or "

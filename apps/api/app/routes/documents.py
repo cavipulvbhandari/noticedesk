@@ -41,7 +41,8 @@ async def upload_document(
 ) -> UploadResponse:
     if ingest_channel not in {"web_upload", "mobile_capture"}:
         raise ValidationError(
-            f"ingest_channel for uploads must be web_upload or mobile_capture, got {ingest_channel!r}"
+            "ingest_channel for uploads must be web_upload or mobile_capture, "
+            f"got {ingest_channel!r}"
         )
 
     mime = (file.content_type or "").lower()

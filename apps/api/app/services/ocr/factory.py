@@ -20,7 +20,11 @@ KNOWN_PROVIDERS: frozenset[str] = frozenset({"google_doc_ai", "azure_doc_intel",
 
 def _build_google() -> OCRProvider:
     s = get_settings()
-    if not (s.google_doc_ai_project_id and s.google_doc_ai_location and s.google_doc_ai_processor_id):
+    if not (
+        s.google_doc_ai_project_id
+        and s.google_doc_ai_location
+        and s.google_doc_ai_processor_id
+    ):
         raise OCRError(
             "GOOGLE_DOC_AI_PROJECT_ID, GOOGLE_DOC_AI_LOCATION, and "
             "GOOGLE_DOC_AI_PROCESSOR_ID must all be set for google_doc_ai"

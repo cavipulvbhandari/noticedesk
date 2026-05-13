@@ -33,7 +33,7 @@ class WorkflowDispatcher(abc.ABC):
     async def submit_parse_and_route(self, inbox_id: UUID, tenant_id: UUID) -> str:
         """Schedule the Sprint 3 parse-and-route pipeline."""
 
-    async def drain(self) -> None:
+    async def drain(self) -> None:  # noqa: B027 — concrete no-op default is intentional
         """Await any in-flight tasks. Used by tests to flush the inline dispatcher.
 
         The Temporal dispatcher runs against an external cluster, so this is a

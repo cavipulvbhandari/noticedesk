@@ -37,7 +37,7 @@ class AzureDocumentIntelligenceProvider(OCRProvider):
                 self._call_api(file_bytes, mime_type),
                 timeout=self._timeout,
             )
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise OCRTransientError(f"azure_doc_intel timed out after {self._timeout}s") from e
         return ExtractedDoc(
             text=text,
@@ -55,7 +55,9 @@ class AzureDocumentIntelligenceProvider(OCRProvider):
                 from azure.ai.documentintelligence.aio import (  # type: ignore[import-not-found]
                     DocumentIntelligenceClient,
                 )
-                from azure.core.credentials import AzureKeyCredential  # type: ignore[import-not-found]
+                from azure.core.credentials import (
+                    AzureKeyCredential,  # type: ignore[import-not-found]
+                )
             except ImportError as e:
                 raise OCRError(
                     "azure-ai-documentintelligence not installed; either install it "

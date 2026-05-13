@@ -21,7 +21,7 @@ import hmac
 import re
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Header
 from sqlalchemy import text
 
 from app.core.config import get_settings
@@ -56,7 +56,8 @@ async def email_inbound(
     slug = _extract_slug(payload.recipient, settings.email_inbound_domain)
     if slug is None:
         raise ValidationError(
-            f"recipient {payload.recipient!r} does not match notices+<slug>@{settings.email_inbound_domain}"
+            f"recipient {payload.recipient!r} does not match "
+            f"notices+<slug>@{settings.email_inbound_domain}"
         )
 
     tenant_id = await _resolve_tenant_by_slug(slug)

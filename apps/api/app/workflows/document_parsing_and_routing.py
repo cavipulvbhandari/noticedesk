@@ -35,7 +35,7 @@ class ParseAndRouteJob:
     tenant_id: UUID
 
     @classmethod
-    def from_dict(cls, payload: dict[str, str]) -> "ParseAndRouteJob":
+    def from_dict(cls, payload: dict[str, str]) -> ParseAndRouteJob:
         return cls(
             inbox_id=UUID(payload["inbox_id"]),
             tenant_id=UUID(payload["tenant_id"]),

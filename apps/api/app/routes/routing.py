@@ -15,7 +15,7 @@ import json
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from sqlalchemy import text
 
 from app.agents.notice_routing import route_notice
@@ -34,7 +34,6 @@ from app.services.identity import (
     validate_gstin_format,
     validate_pan_format,
 )
-from app.workflows import get_dispatcher
 
 router = APIRouter()
 
@@ -478,14 +477,27 @@ def _reconciliation_status_for_override(parsed: Any, client_pan: str) -> str:
     gstins = [g.get("value") for g in (parsed.get("gstins_extracted") or []) if isinstance(g, dict)]
     if pans and pans[0] == client_pan:
         return "reconciled"
-    if gstins and validate_gstin_format(gstins[0]) and extract_pan_from_gstin(gstins[0]) == client_pan:
+    if (
+        gstins
+        and validate_gstin_format(gstins[0])
+        and extract_pan_from_gstin(gstins[0]) == client_pan
+    ):
         return "reconciled"
     if not pans and not gstins:
         return "no_identifier"
     return "mismatch_blocked"
 
 
-async def _match_or_create_matter(session, *, tenant_id, client_id, registration_id, law, financial_year, assessment_year):
+async def _match_or_create_matter(
+    session,
+    *,
+    tenant_id,
+    client_id,
+    registration_id,
+    law,
+    financial_year,
+    assessment_year,
+):
     from app.agents.notice_routing import _match_or_create_matter as impl  # local import
     return await impl(
         session,

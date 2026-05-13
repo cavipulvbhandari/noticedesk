@@ -7,9 +7,7 @@ Roles match the user_role enum on the users table:
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Annotated
 
-from fastapi import Depends
 from sqlalchemy import text
 
 from app.core.errors import ForbiddenError, NotFoundError

@@ -28,19 +28,16 @@ from pathlib import Path
 from typing import Any
 
 from app.agents.document_parsing import (
-    KNOWN_DOCUMENT_TYPES,
     ParseInput,
     parse_document,
 )
 from app.services.identity import extract_pan_from_gstin
+from app.services.llm.factory import get_primary_llm
 
 # Unanchored versions used to scan free text — the constants in
 # app.services.identity are anchored for whole-string validation.
 PAN_FINDER = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")
 GSTIN_FINDER = re.compile(r"\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]\b")
-from app.services.llm import LLMResponse
-from app.services.llm.factory import get_llm_provider, get_primary_llm
-from app.services.llm.stub import StubLLMProvider
 
 FIXTURES_PATH = Path(__file__).parent / "document_parsing" / "fixtures.json"
 
@@ -134,7 +131,7 @@ async def run(mode: str) -> int:
     for fx in fixtures:
         if mode == "real":
             try:
-                provider = get_primary_llm()
+                get_primary_llm()
             except Exception as e:  # noqa: BLE001
                 print(f"could not build primary LLM: {e}", file=sys.stderr)
                 return 2

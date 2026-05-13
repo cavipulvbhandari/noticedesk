@@ -502,10 +502,19 @@ async def _emit_audit(
         after_state={
             "routing_status": decision.routing_status,
             "canonical_pan": decision.canonical_pan,
-            "matched_client_id": str(decision.matched_client_id) if decision.matched_client_id else None,
-            "matched_registration_id": str(decision.matched_registration_id) if decision.matched_registration_id else None,
-            "created_matter_id": str(decision.created_matter_id) if decision.created_matter_id else None,
-            "created_notice_id": str(decision.created_notice_id) if decision.created_notice_id else None,
+            "matched_client_id": (
+                str(decision.matched_client_id) if decision.matched_client_id else None
+            ),
+            "matched_registration_id": (
+                str(decision.matched_registration_id)
+                if decision.matched_registration_id else None
+            ),
+            "created_matter_id": (
+                str(decision.created_matter_id) if decision.created_matter_id else None
+            ),
+            "created_notice_id": (
+                str(decision.created_notice_id) if decision.created_notice_id else None
+            ),
             "anomaly_details": decision.anomaly_details,
             "document_type": parsed.get("document_type"),
             "law": parsed.get("law"),

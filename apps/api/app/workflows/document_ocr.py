@@ -48,7 +48,7 @@ class OcrJob:
     tenant_id: UUID
 
     @classmethod
-    def from_dict(cls, payload: dict[str, str]) -> "OcrJob":
+    def from_dict(cls, payload: dict[str, str]) -> OcrJob:
         return cls(
             inbox_id=UUID(payload["inbox_id"]),
             tenant_id=UUID(payload["tenant_id"]),

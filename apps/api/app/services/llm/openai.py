@@ -79,5 +79,5 @@ class OpenAIProvider(LLMProvider):
 
         try:
             return await asyncio.wait_for(_call(), timeout=self._timeout)
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise LLMTransientError(f"openai timed out after {self._timeout}s") from e

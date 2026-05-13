@@ -13,7 +13,6 @@ from typing import Any
 
 from app.services.llm.base import LLMError, LLMProvider, LLMResponse
 
-
 ResponseFactory = Callable[[str, str], str]  # (system, user) -> assistant text
 
 

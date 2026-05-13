@@ -7,7 +7,7 @@ email channel is active for the firm and report when the last email landed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.services.portal_connectors.base import (
@@ -41,6 +41,6 @@ class EmailForwardConnector(PortalConnector):
         return ConnectorStatus(
             connector=self.name,
             healthy=True,
-            last_success_at=datetime.now(timezone.utc).isoformat(),
+            last_success_at=datetime.now(UTC).isoformat(),
             notes={"inbound_address": self.inbound_address},
         )
