@@ -76,15 +76,35 @@ def lookup_canned_response(user_prompt: str) -> str | None:
       1. Drafting agent (Sprint 5) — recognised by the "MATTER CONTEXT" header.
       2. Document parsing agent (Sprint 3) — keyed off the original filename.
 
-    Returns None if no canned entry exists, in which case the caller falls
-    back to the StubLLMProvider default of "{}".
+    Demo fallback: when ``STUB_DEFAULT_CANNED`` is set (e.g. to
+    ``acme_mh_asmt10``), any parsing prompt that doesn't match a specific
+    filename falls back to the named canned entry. This lets a partner drop
+    *any* PDF onto /inbox and watch the whole route+draft flow without
+    renaming the file to "GST Notice.pdf" first.
+
+    Returns None if no entry matches and no fallback is configured, in which
+    case the caller falls back to the StubLLMProvider default of "{}".
     """
     if "MATTER CONTEXT" in user_prompt:
         return _drafting_canned(user_prompt)
     for filename, payload in _CANNED_BY_FILENAME.items():
         if filename in user_prompt:
             return json.dumps(payload)
+
+    fallback_key = __import__("os").environ.get("STUB_DEFAULT_CANNED", "").strip()
+    if fallback_key:
+        payload = _FALLBACK_BY_KEY.get(fallback_key)
+        if payload is not None:
+            return json.dumps(payload)
     return None
+
+
+# Friendly keys for the STUB_DEFAULT_CANNED env var. Pick whichever matches
+# the matter you want every uploaded PDF to route to during a demo.
+_FALLBACK_BY_KEY: dict[str, dict[str, Any]] = {
+    "acme_mh_asmt10": _CANNED_BY_FILENAME["GST Notice.pdf"],
+    "drc01a_anomaly": _CANNED_BY_FILENAME["drc-01.pdf"],
+}
 
 
 # ---- Drafting-agent canned responses --------------------------------------

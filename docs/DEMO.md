@@ -11,6 +11,12 @@ rough; adjust to the partner's questions.
    export LLM_PROVIDER_PRIMARY=anthropic
    export CITATION_PROVIDER=indiankanoon          # optional but punchy
    export INDIANKANOON_API_TOKEN=…                # if you have one; stub is fine otherwise
+
+   # The OCR provider is still the stub by default (Google Doc AI is the
+   # production option). To make the stub-parser produce a sensible canned
+   # response for ANY PDF the partner uploads — instead of only
+   # "GST Notice.pdf" / "drc-01.pdf" — set:
+   export STUB_DEFAULT_CANNED=acme_mh_asmt10      # any .pdf → Acme MH ASMT-10
    ```
 
 2. **Reset the demo dataset** so the partner sees a known state:
@@ -88,6 +94,33 @@ Click **Inbox** in the sidebar.
 Show i3: click the row → side panel opens → click **Add this Karnataka
 GSTIN to Acme**. The notice routes to its matter; the registration is
 created.
+
+**Live upload (the killer demo):** drag any PDF the partner has on their
+laptop into the upload zone. With `STUB_DEFAULT_CANNED=acme_mh_asmt10`
+set, the file flows through:
+1. Storage write
+2. OCR (stub or Google Doc AI)
+3. Parse via Claude (or the canned fallback)
+4. PAN/GSTIN reconciliation against the client tree
+5. Matter + notice creation
+
+Inbox row state changes live — OCR "pending → in_progress → completed",
+then routing fires and the row disappears with a toast pointing at the
+new matter. The partner experiences "I dropped a file in and 4 seconds
+later I'm on a matter view with the parsed facts."
+
+For a hands-off rehearsal of the same path (run from a second terminal
+on your laptop, **not** in front of the partner):
+
+```bash
+STUB_DEFAULT_CANNED=acme_mh_asmt10 make demo-walk
+# or with their real PDF:
+STUB_DEFAULT_CANNED=acme_mh_asmt10 make demo-walk PDF=~/Downloads/some-notice.pdf
+```
+
+`make demo-walk` posts the file, polls the inbox row through every
+status transition, and prints the final notice + draft URL. Use it to
+sanity-check the pipeline 5 minutes before the partner sits down.
 
 ### 0:14 — 0:20 — Matter view + Draft reply
 

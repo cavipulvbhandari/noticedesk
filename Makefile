@@ -68,3 +68,12 @@ demo-status:
 # Picks up whichever LLM_PROVIDER_PRIMARY is in the shell.
 demo-preseed-draft:
 	cd apps/api && .venv/bin/python -m scripts.preseed_demo_draft
+
+# Run the full e2e flow against the running stack: upload a PDF (defaults
+# to an embedded 1-page test file), poll for OCR + parse + route, then
+# generate a draft. Requires uvicorn already running on :8000.
+#
+# For a partner demo flow with any real PDF:
+#   STUB_DEFAULT_CANNED=acme_mh_asmt10 make demo-walk PDF=path/to/notice.pdf
+demo-walk:
+	cd apps/api && .venv/bin/python -m scripts.demo_e2e $(PDF)
