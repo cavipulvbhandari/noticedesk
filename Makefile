@@ -77,3 +77,13 @@ demo-preseed-draft:
 #   STUB_DEFAULT_CANNED=acme_mh_asmt10 make demo-walk PDF=path/to/notice.pdf
 demo-walk:
 	cd apps/api && .venv/bin/python -m scripts.demo_e2e $(PDF)
+
+# Install the real-LLM + real-OCR SDKs in one go. Both providers are
+# optional extras in pyproject.toml so the default install stays slim.
+demo-live-install:
+	cd apps/api && .venv/bin/pip install -e ".[live]"
+
+# Preflight: call Claude + Google Doc AI once each with the current env.
+# Exits non-zero if either fails — use this 5 minutes before the partner.
+demo-preflight:
+	cd apps/api && .venv/bin/python -m scripts.check_live_providers

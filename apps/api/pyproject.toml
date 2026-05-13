@@ -36,6 +36,21 @@ anthropic = [
 openai = [
     "openai>=1.40.0",
 ]
+# Real OCR providers — same pattern.
+google_doc_ai = [
+    "google-cloud-documentai>=2.27.0",
+]
+azure_doc_intel = [
+    "azure-ai-documentintelligence>=1.0.0",
+    "azure-core>=1.30.0",
+]
+# Convenience: pip install -e ".[live]" pulls everything you need for a
+# real partner demo (Anthropic + Google Doc AI). IndianKanoon's token-based
+# adapter has no extra SDK so it isn't here.
+live = [
+    "anthropic>=0.34.0",
+    "google-cloud-documentai>=2.27.0",
+]
 
 [tool.ruff]
 line-length = 100
