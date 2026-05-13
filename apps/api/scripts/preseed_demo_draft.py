@@ -14,14 +14,20 @@ exits without creating another.
 
 from __future__ import annotations
 
-import asyncio
-import sys
-from uuid import UUID
+from pathlib import Path
 
-from sqlalchemy import text
+from dotenv import load_dotenv
 
-from app.core.db import session_for_tenant
-from app.workflows.drafting import GenerateDraftJob, run_generate_draft
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
+
+import asyncio  # noqa: E402
+import sys  # noqa: E402
+from uuid import UUID  # noqa: E402
+
+from sqlalchemy import text  # noqa: E402
+
+from app.core.db import session_for_tenant  # noqa: E402
+from app.workflows.drafting import GenerateDraftJob, run_generate_draft  # noqa: E402
 
 # Demo seed constants — matches packages/db/seeds/phase1_demo.sql.
 TENANT_ID = UUID("11111111-1111-1111-1111-111111111111")

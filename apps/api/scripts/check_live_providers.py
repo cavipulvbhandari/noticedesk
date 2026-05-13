@@ -11,14 +11,22 @@ in the demo flow.
 
 from __future__ import annotations
 
-import asyncio
-import os
-import sys
-import time
+# Load .env into os.environ first so credential paths (e.g. GOOGLE_APPLICATION_CREDENTIALS)
+# are visible to the SDKs we import below. Mirrors what app/main.py does.
+from pathlib import Path
 
-from app.core.config import get_settings
-from app.services.llm import get_primary_llm
-from app.services.ocr import get_ocr_provider, get_primary_provider
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
+
+import asyncio  # noqa: E402
+import os  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+
+from app.core.config import get_settings  # noqa: E402
+from app.services.llm import get_primary_llm  # noqa: E402
+from app.services.ocr import get_ocr_provider, get_primary_provider  # noqa: E402
 
 # A 1-page valid PDF: "Hello from NoticeDesk" so Doc AI has actual glyphs to OCR.
 _TINY_PDF = (

@@ -23,18 +23,24 @@ parser output.
 
 from __future__ import annotations
 
-import asyncio
-import os
-import pathlib
-import sys
-import time
-from uuid import UUID
+from pathlib import Path
 
-import httpx
-from sqlalchemy import text
+from dotenv import load_dotenv
 
-from app.core.db import session_for_tenant
-from app.workflows.drafting import GenerateDraftJob, run_generate_draft
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
+
+import asyncio  # noqa: E402
+import os  # noqa: E402
+import pathlib  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+from uuid import UUID  # noqa: E402
+
+import httpx  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+
+from app.core.db import session_for_tenant  # noqa: E402
+from app.workflows.drafting import GenerateDraftJob, run_generate_draft  # noqa: E402
 
 TENANT_ID = UUID("11111111-1111-1111-1111-111111111111")
 USER_ID = UUID("22222222-2222-2222-2222-222222222222")

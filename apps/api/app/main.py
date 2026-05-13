@@ -2,14 +2,27 @@
 
 from __future__ import annotations
 
-import sentry_sdk
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+# Load apps/api/.env into os.environ BEFORE any SDK imports — Google
+# Cloud's auth library, anthropic's client, and the AWS SDK all read their
+# credentials from os.environ. pydantic-settings populates the Settings
+# object but does NOT inject keys back into os.environ, so a partner who
+# put GOOGLE_APPLICATION_CREDENTIALS in .env without also exporting it in
+# the shell would see "default credentials not found" at first call.
+# python-dotenv is already a transitive dep of pydantic-settings.
+from pathlib import Path
 
-from app.core.config import get_settings
-from app.core.errors import install_error_handlers
-from app.core.logging import configure_logging
-from app.routes import (
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
+
+import sentry_sdk  # noqa: E402  (must follow load_dotenv to see SENTRY_DSN)
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+from app.core.config import get_settings  # noqa: E402
+from app.core.errors import install_error_handlers  # noqa: E402
+from app.core.logging import configure_logging  # noqa: E402
+from app.routes import (  # noqa: E402
     clients,
     demo,
     documents,
