@@ -58,22 +58,28 @@ class AnthropicProvider(LLMProvider):
         client = self._ensure_client()
 
         async def _call() -> LLMResponse:
+            # Newer Claude models (Opus 4.7 and later) deprecate `temperature` —
+            # passing it returns 400 'temperature is deprecated for this model'.
+            # We only forward the kwarg when callers explicitly ask for non-zero
+            # variability AND the model accepts it. Default deterministic-zero
+            # callers (every agent today) get the model's native behavior.
+            kwargs: dict[str, Any] = {
+                "model": self.model,
+                "max_tokens": max_output_tokens,
+                "system": [
+                    {
+                        "type": "text",
+                        "text": system,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+                "messages": [{"role": "user", "content": user}],
+            }
+            if temperature > 0.0 and not _model_deprecates_temperature(self.model):
+                kwargs["temperature"] = temperature
+
             try:
-                # System prompts are cached for repeat agent calls — same
-                # system prompt across many notices is the common case.
-                msg = await client.messages.create(
-                    model=self.model,
-                    max_tokens=max_output_tokens,
-                    temperature=temperature,
-                    system=[
-                        {
-                            "type": "text",
-                            "text": system,
-                            "cache_control": {"type": "ephemeral"},
-                        }
-                    ],
-                    messages=[{"role": "user", "content": user}],
-                )
+                msg = await client.messages.create(**kwargs)
             except Exception as e:  # noqa: BLE001
                 # Anthropic exceptions are mostly transient (rate limit, 5xx,
                 # overloaded). Treat as transient by default so the workflow's
@@ -98,3 +104,13 @@ class AnthropicProvider(LLMProvider):
             return await asyncio.wait_for(_call(), timeout=self._timeout)
         except TimeoutError as e:
             raise LLMTransientError(f"anthropic timed out after {self._timeout}s") from e
+
+
+def _model_deprecates_temperature(model: str) -> bool:
+    """Return True for models that 400 when `temperature` is passed.
+
+    Anthropic deprecated the parameter starting with Opus 4.x. Conservative
+    check: any model name containing 'opus-4' or 'sonnet-4' or 'haiku-4'.
+    """
+    lowered = model.lower()
+    return any(tag in lowered for tag in ("opus-4", "sonnet-4", "haiku-4"))
