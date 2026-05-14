@@ -58,6 +58,9 @@ class GoogleDocumentAIProvider(OCRProvider):
         client = self._client
         if client is None:
             try:
+                from google.api_core.client_options import (  # type: ignore[import-not-found]
+                    ClientOptions,
+                )
                 from google.cloud import (
                     documentai_v1 as documentai,  # type: ignore[import-not-found]
                 )
@@ -66,7 +69,17 @@ class GoogleDocumentAIProvider(OCRProvider):
                     "google-cloud-documentai not installed; either install it or "
                     "switch OCR_PROVIDER_PRIMARY to a different provider"
                 ) from e
-            client = documentai.DocumentProcessorServiceAsyncClient()
+            # Document AI uses regional endpoints. The default SDK client hits
+            # the global / US endpoint, which returns 400 when the processor
+            # lives in any other location (the server replies "must match the
+            # server deployment 'us'"). Build the endpoint explicitly from the
+            # configured location.
+            opts = (
+                ClientOptions(api_endpoint=f"{self._location}-documentai.googleapis.com")
+                if self._location and self._location != "us"
+                else None
+            )
+            client = documentai.DocumentProcessorServiceAsyncClient(client_options=opts)
             self._client = client
 
         name = (
