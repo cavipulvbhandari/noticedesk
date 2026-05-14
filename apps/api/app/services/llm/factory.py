@@ -22,6 +22,7 @@ def _build_anthropic() -> LLMProvider:
     return AnthropicProvider(
         api_key=s.anthropic_api_key,
         model=s.anthropic_model,
+        timeout_seconds=s.anthropic_timeout_seconds,
     )
 
 
@@ -32,6 +33,7 @@ def _build_openai() -> LLMProvider:
     return OpenAIProvider(
         api_key=s.openai_api_key,
         model=s.openai_model,
+        timeout_seconds=s.openai_timeout_seconds,
     )
 
 

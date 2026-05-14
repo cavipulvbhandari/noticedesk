@@ -22,7 +22,7 @@ class OpenAIProvider(LLMProvider):
         api_key: str,
         model: str = "gpt-4o",
         client: Any | None = None,
-        timeout_seconds: float = 60.0,
+        timeout_seconds: float = 180.0,
     ) -> None:
         self._api_key = api_key
         self.model = model

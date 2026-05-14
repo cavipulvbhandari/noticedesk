@@ -90,8 +90,15 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-4-7"
+    # 15-section drafts of large notices commonly take 90-150s on Opus 4.7
+    # because the model is generating ~6-8K output tokens. The OCR pipeline
+    # is fast (single page, few seconds); this timeout only governs the
+    # drafting LLM call. Raise it again if partners report timeouts on the
+    # densest matters; lower it once we move to a streaming endpoint.
+    anthropic_timeout_seconds: float = 180.0
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o"
+    openai_timeout_seconds: float = 180.0
 
     # Agents
     document_parsing_prompt_version: str = "v1"
