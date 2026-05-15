@@ -35,7 +35,7 @@ from app.services.llm import (
 logger = get_logger(__name__)
 
 PROMPTS_DIR: Final[Path] = Path(__file__).parent / "prompts"
-PROMPT_VERSION: Final[str] = "drafting_v1"
+PROMPT_VERSION: Final[str] = "drafting_v2"
 
 Tone = Literal["formal", "assertive", "conciliatory"]
 
@@ -77,6 +77,11 @@ class DraftingInput:
     assessment_year: str | None
     notice: dict[str, Any]
     raw_extracted_json: dict[str, Any]
+    # Up to ~6K chars of OCR text from the source PDF — gives the model the
+    # numbered paragraphs of the notice so Para-wise Reply can mirror them
+    # instead of punting. Empty when the notice was manually entered (no
+    # source_inbox_id).
+    notice_ocr_excerpt: str = ""
     prior_matters: list[dict[str, Any]] = field(default_factory=list)
     sibling_notices: list[dict[str, Any]] = field(default_factory=list)
     documents: list[dict[str, Any]] = field(default_factory=list)
@@ -110,11 +115,14 @@ async def load_drafting_input(
                        n.notice_id, n.document_type, n.notice_number,
                        n.din_or_rfn, n.issue_date, n.due_date, n.hearing_date,
                        n.authority, n.demand_amount, n.lifecycle_status,
-                       n.raw_extracted_json
+                       n.raw_extracted_json,
+                       n.source_inbox_id,
+                       LEFT(COALESCE(ib.ocr_text, ''), 6000) AS notice_ocr_excerpt
                 FROM matters m
                 JOIN clients c ON c.client_id = m.client_id
                 JOIN client_registrations r ON r.registration_id = m.registration_id
                 JOIN notices n ON n.notice_id = :nid
+                LEFT JOIN documents_inbox ib ON ib.inbox_id = n.source_inbox_id
                 WHERE m.matter_id = :mid AND c.deleted_at IS NULL
                 """
             ),
@@ -237,6 +245,7 @@ async def load_drafting_input(
         raw_extracted_json=(
             row["raw_extracted_json"] if isinstance(row["raw_extracted_json"], dict) else {}
         ),
+        notice_ocr_excerpt=row["notice_ocr_excerpt"] or "",
         prior_matters=[dict(r) for r in prior_matters_rows],
         sibling_notices=[dict(r) for r in sibling_rows],
         documents=[dict(r) for r in doc_rows],
@@ -245,8 +254,8 @@ async def load_drafting_input(
 
 
 def _load_prompt_template() -> tuple[str, str]:
-    """Return (system_prompt, user_template) parsed from drafting_v1.md."""
-    text_md = (PROMPTS_DIR / "drafting_v1.md").read_text(encoding="utf-8")
+    """Return (system_prompt, user_template) parsed from the active prompt."""
+    text_md = (PROMPTS_DIR / f"{PROMPT_VERSION}.md").read_text(encoding="utf-8")
     parts = text_md.split("## User prompt template", 1)
     sys_section = parts[0]
     user_section = parts[1] if len(parts) > 1 else ""
@@ -312,6 +321,15 @@ def _render_user_prompt(template: str, di: DraftingInput) -> str:
         empty="(none — partner did not attach cross-registration context)",
     )
 
+    ocr_block = (
+        di.notice_ocr_excerpt.strip()
+        if di.notice_ocr_excerpt
+        else (
+            "(notice was manually entered; no OCR text available — rely on "
+            "the parsed fields + structured JSON above for the para-wise reply)"
+        )
+    )
+
     return (
         template
         .replace("{client.legal_name}", di.client_legal_name)
@@ -324,6 +342,7 @@ def _render_user_prompt(template: str, di: DraftingInput) -> str:
         .replace("{fy_or_ay}", fy_or_ay)
         .replace("{notice.document_type}", di.notice.get("document_type") or "—")
         .replace("{notice.din_or_rfn}", di.notice.get("din_or_rfn") or "—")
+        .replace("{notice.notice_number}", di.notice.get("notice_number") or "—")
         .replace("{notice.issue_date}", di.notice.get("issue_date") or "—")
         .replace("{notice.due_date}", di.notice.get("due_date") or "—")
         .replace("{notice.authority}", di.notice.get("authority") or "—")
@@ -336,6 +355,7 @@ def _render_user_prompt(template: str, di: DraftingInput) -> str:
                 else "—"
             ),
         )
+        .replace("{notice_ocr_excerpt}", ocr_block)
         .replace(
             "{raw_extracted_json}",
             json.dumps(di.raw_extracted_json, indent=2, ensure_ascii=False),
