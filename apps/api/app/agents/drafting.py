@@ -46,6 +46,18 @@ NOTICE_OCR_EXCERPT_CHARS: Final[int] = int(
     __import__("os").environ.get("DRAFTING_OCR_EXCERPT_CHARS", "20000")
 )
 
+# Output cap for the drafting call. The v2 prompt produces ALL 15 sections
+# including a substantive Para-wise Reply (1.5K+ tokens) and HTML-list
+# Filing Checklist — a typical full draft lands at 6-10K output tokens, a
+# big multi-issue notice at 12-16K. Hitting the cap returns truncated
+# (invalid) JSON which the parser then rejects, so we set a comfortable
+# default and let partners crank further via env if a notice still trips.
+# Output tokens are charged only when actually emitted, so a high cap costs
+# nothing on short drafts.
+DRAFTING_MAX_OUTPUT_TOKENS: Final[int] = int(
+    __import__("os").environ.get("DRAFTING_MAX_OUTPUT_TOKENS", "16000")
+)
+
 Tone = Literal["formal", "assertive", "conciliatory"]
 
 
@@ -417,7 +429,7 @@ async def _generate_with(
     response = await provider.generate_text(
         system=system,
         user=user,
-        max_output_tokens=8192,
+        max_output_tokens=DRAFTING_MAX_OUTPUT_TOKENS,
         temperature=0.1,
     )
     raw = response.content.strip()
@@ -430,6 +442,16 @@ async def _generate_with(
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError as e:
+        # The most common cause is hitting max_output_tokens mid-string. The
+        # response ends without closing quotes / brackets, so json.loads
+        # raises "Unterminated string". Surface a partner-actionable hint.
+        out_tokens = getattr(response, "output_tokens", None)
+        if out_tokens is not None and out_tokens >= DRAFTING_MAX_OUTPUT_TOKENS - 100:
+            raise JsonSchemaValidationError(
+                f"drafter hit output token cap ({out_tokens} / "
+                f"{DRAFTING_MAX_OUTPUT_TOKENS}) and returned truncated JSON. "
+                "Bump DRAFTING_MAX_OUTPUT_TOKENS in apps/api/.env (try 24000)."
+            ) from e
         raise JsonSchemaValidationError(f"drafter returned non-JSON: {e}") from e
     _validate(payload)
     return payload, response
