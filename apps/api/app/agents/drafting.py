@@ -37,6 +37,15 @@ logger = get_logger(__name__)
 PROMPTS_DIR: Final[Path] = Path(__file__).parent / "prompts"
 PROMPT_VERSION: Final[str] = "drafting_v2"
 
+# How many characters of notice OCR text to feed the drafter. 20K handles
+# the typical real-world range (1-page ASMT-10 through 15-page DRC-01 SCN);
+# partners with long-tail notices can bump via DRAFTING_OCR_EXCERPT_CHARS
+# in apps/api/.env. Claude Opus 4.7 has 200K context so the model is fine;
+# the cap exists for cost predictability (each char ≈ 0.25 input tokens).
+NOTICE_OCR_EXCERPT_CHARS: Final[int] = int(
+    __import__("os").environ.get("DRAFTING_OCR_EXCERPT_CHARS", "20000")
+)
+
 Tone = Literal["formal", "assertive", "conciliatory"]
 
 
@@ -117,7 +126,7 @@ async def load_drafting_input(
                        n.authority, n.demand_amount, n.lifecycle_status,
                        n.raw_extracted_json,
                        n.source_inbox_id,
-                       LEFT(COALESCE(ib.ocr_text, ''), 6000) AS notice_ocr_excerpt
+                       LEFT(COALESCE(ib.ocr_text, ''), :ocr_chars) AS notice_ocr_excerpt
                 FROM matters m
                 JOIN clients c ON c.client_id = m.client_id
                 JOIN client_registrations r ON r.registration_id = m.registration_id
@@ -126,7 +135,11 @@ async def load_drafting_input(
                 WHERE m.matter_id = :mid AND c.deleted_at IS NULL
                 """
             ),
-            {"mid": str(matter_id), "nid": str(notice_id)},
+            {
+                "mid": str(matter_id),
+                "nid": str(notice_id),
+                "ocr_chars": NOTICE_OCR_EXCERPT_CHARS,
+            },
         )
     ).mappings().first()
     if row is None:
