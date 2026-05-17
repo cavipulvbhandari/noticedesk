@@ -421,8 +421,16 @@ async def export_draft(
         if row["financial_year"]
         else (f"AY {row['assessment_year']}" if row["assessment_year"] else "—")
     )
+    # Demo override: production tenants get their real Clerk-mapped name,
+    # but for partner-facing pitches the operator can swap in a real firm
+    # name via env without seeding a new tenant. Falls through to the DB
+    # value when not set.
+    firm_name = (
+        __import__("os").environ.get("DEMO_FIRM_NAME_OVERRIDE")
+        or row["firm_name"]
+    )
     cover = CoverSheetData(
-        firm_name=row["firm_name"],
+        firm_name=firm_name,
         client_legal_name=row["client_legal_name"],
         client_pan=row["client_pan"],
         registration_label=reg_label,

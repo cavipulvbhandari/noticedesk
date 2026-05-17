@@ -85,6 +85,48 @@ SECTION-SPECIFIC RULES — enforce strictly:
      binding Supreme Court / jurisdictional HC decisions. Never invent a
      case — the verification agent strips unverified ones.
 
+     LEAD WITH THE STRONGEST ARGUMENT. If one limb of the demand can be
+     dispositively defeated (e.g. IGST credit on imports/RCM that does
+     not flow through GSTR-2A/2B by design, or a wholly time-barred
+     period), put that argument FIRST in Section 06. Don't bury the
+     winning point under generic Section 16 conditions.
+
+     CANONICAL AUTHORITIES — these are widely cited and the verifier
+     recognises them. Use whichever fit the notice:
+       - Pushpam Pharmaceuticals Co. v. Collector of Central Excise:
+         suppression in proviso to s.11A / s.74 CGST requires deliberate
+         withholding, not mere non-disclosure.
+       - Cosmic Dye Chemical v. CCE: extended period needs intent to evade.
+       - Continental Foundation v. CCE: bona fide interpretation is not
+         suppression.
+       - Anand Nishikawa v. CCE: suppression construed strictly.
+       - Uniworth Textiles v. CCE: mere non-payment ≠ suppression.
+       - Amrit Foods v. CCE: SCN must specifically allege which limb of
+         the proviso is invoked (fraud / collusion / wilful misstatement
+         / suppression).
+       - Suncraft Energy Pvt Ltd v. ACST (Cal HC 2023) / D.Y. Beathel
+         Enterprises v. STO (Mad HC 2021) / On Quest Merchandising v.
+         GNCTD (Del HC): ITC cannot be denied to the buyer for the
+         supplier's default; the department must first proceed against
+         the defaulting supplier.
+       - Bharti Airtel v. CGST: department bears the burden on positive
+         material; mere mismatches don't discharge it.
+       - Larsen & Toubro v. State of Karnataka: reconciliation suffices
+         where records bear out the position.
+       - Andaman Timber Industries v. CCE: denial of cross-examination
+         vitiates the order.
+       - Eicher Motors v. UoI: accrued credit is a vested right.
+       - For s.148 reassessment matters: ITO v. Ganga Saran (reason to
+         believe must be rational); CIT v. Kelvinator (no reopening on
+         change of opinion); UoI v. Ashish Agarwal (s.148A procedure
+         must be followed).
+
+     For Section 73 SCNs, always include — without prejudice — a note
+     on the s.73(8) tactical option: if any portion of the demand is
+     sustained, the assessee may discharge tax + interest within 30
+     days of the order and escape penalty entirely. Frame this as
+     reservation of rights, not a concession.
+
   10 Documents Enclosed: use a numbered HTML list:
      <ol><li>...</li><li>...</li></ol>
      Reference the notice's own "Documents called for" list if present;
@@ -94,6 +136,17 @@ SECTION-SPECIFIC RULES — enforce strictly:
      "remand for reconsideration" / "stay recovery". Always include
      a request for personal hearing under the relevant section
      (Sec 75(4) CGST or Sec 142(2) IT) before adverse order.
+
+  07 Procedural Objections: trim to objections that actually apply. Drop
+     boilerplate that doesn't fit (e.g. don't raise "s.73 vs s.74
+     ambiguity" if the notice unambiguously cites only one). When
+     pleading absence of pre-show-cause consultation, use the form:
+     "The demand has been raised without prior intimation in Form
+     GST DRC-01A under Rule 142(1A) of the CGST Rules, 2017, depriving
+     the noticee of the statutory opportunity for pre-SCN consultation."
+     Do NOT phrase as "no notice was served calling for reconciliation"
+     — that contradicts the SCN itself, which is the document doing the
+     calling.
 
   15 Filing Checklist: MUST be a numbered HTML list:
      <ol><li>Verify DIN ...</li><li>Obtain signatures ...</li></ol>
@@ -111,6 +164,13 @@ body_html may contain:
   - [ASSUMED — please verify] inline marker where you've inferred a fact.
   - [DOCUMENT REQUESTED — pending from client] where you'd need a doc that
     hasn't been provided yet.
+
+When you state the notice's document type (DRC-01 / DRC-01A / ASMT-10 / etc.)
+in any narrative section, qualify it if the source is not explicit — e.g.
+"the impugned communication, which appears to be in the nature of an SCN
+under s.73 CGST (in the form of GST DRC-01)" rather than asserting the
+form code as fact. The parser's document_type field is its best guess; the
+draft should not promote that guess to a verbatim claim.
 
 HARD RULES
 

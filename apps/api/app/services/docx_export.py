@@ -8,16 +8,21 @@ Produces .docx in Vipul's filing-grade preferences:
   - Cover sheet on Filing version with client/PAN/registration/notice/FY/AY/due
 
 Three modes:
-  - filing   → excludes Section 13 (internal note) and Section 14 (client summary)
-  - client   → excludes Section 13; includes Section 14
-  - internal → full draft including all sections + internal note
+  - filing   → excludes Section 13 (internal note) and Section 14 (client summary).
+               Also scrubs [ASSUMED] / [DOCUMENT REQUESTED] internal markers and
+               drops the "Footnotes — Citations removed" section (those are
+               working-paper artefacts that must never reach the department).
+  - client   → excludes Section 13; includes Section 14. Same scrubbing as
+               filing (the client doesn't need to see firm-internal todos).
+  - internal → full draft including all sections + internal note. Markers
+               and footnotes survive.
 
-The HTML inside body_html is parsed minimally: <p>, <br>, <span> are
-respected; everything else is stripped. <span class="draft-citation"> is
-rendered as italic plain text (no hyperlink — partner Vipul filed-grade
-preference is a flat string). <span class="draft-internal-note"> is
-honoured only in internal mode; in filing/client modes the inner text is
-dropped entirely.
+Sections are renumbered sequentially in the rendered document regardless of
+gaps in the source (Section 08 omitted when no third-party statement, etc.) —
+the reader sees 01, 02, 03, … not 01, 02, 03, …, 07, 10, 11.
+
+The HTML inside body_html is parsed minimally: <p>, <br>, <ol>, <ul>, <li>,
+<span> are respected; everything else is stripped.
 """
 
 from __future__ import annotations
@@ -35,6 +40,15 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
 ExportMode = Literal["filing", "client", "internal"]
+
+
+# Strip-internal markers — written by the drafter as partner-actionable
+# todos that must not survive into anything the client or the department
+# sees. Matches the literal bracketed forms the prompt emits.
+_INTERNAL_MARKER_RE = re.compile(
+    r"\[(ASSUMED[^\]]*|DOCUMENT REQUESTED[^\]]*|TODO[^\]]*)\]",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +72,16 @@ def _exclude_sections(mode: ExportMode) -> set[int]:
     return set()
 
 
+def _scrub_internal_markers(html: str) -> str:
+    """Remove [ASSUMED ...] / [DOCUMENT REQUESTED ...] markers from body html."""
+    return _INTERNAL_MARKER_RE.sub("", html)
+
+
+def _is_footnote_section(s: dict[str, Any]) -> bool:
+    title = str(s.get("title", "")).strip().lower()
+    return title == "footnotes" or "citations removed" in title
+
+
 def render_draft_docx(
     *,
     mode: ExportMode,
@@ -77,18 +101,31 @@ def render_draft_docx(
 
     exclude = _exclude_sections(mode)
     include_inline_internal = mode == "internal"
+    # Scrub working-paper artefacts in filing + client modes. Internal mode
+    # keeps everything so the partner can see what the model flagged.
+    scrub_internal_markers = mode != "internal"
+    drop_footnote_section = mode != "internal"
 
+    # Renumber sequentially so the reader sees 01, 02, 03 … instead of
+    # gaps where conditional sections (08 cross-examination, 09 cross-
+    # registration, 13 internal note, 14 client summary) were skipped.
+    display_num = 0
     for s in sections:
         num = int(s.get("num", 0))
         if num in exclude:
             continue
+        if drop_footnote_section and _is_footnote_section(s):
+            continue
+        display_num += 1
         title = str(s.get("title", "")).strip()
         body = str(s.get("body_html", ""))
+        if scrub_internal_markers:
+            body = _scrub_internal_markers(body)
         # Section header line: e.g. "01. Executive Summary"
         h = doc.add_paragraph()
         h.paragraph_format.space_before = Pt(12)
         h.paragraph_format.space_after = Pt(4)
-        run = h.add_run(f"{num:02d}. {title}")
+        run = h.add_run(f"{display_num:02d}. {title}")
         run.bold = True
         run.font.size = Pt(14)
         _render_body_html(doc, body, include_inline_internal=include_inline_internal)
@@ -205,11 +242,15 @@ def _add_cover_sheet(doc: Document, cover: CoverSheetData) -> None:
 
 
 class _HtmlToDocx(HTMLParser):
-    """Streams <p>, <br>, <span> from body_html into a docx Document.
+    """Streams <p>, <br>, <ol>, <ul>, <li>, <span> from body_html into a Document.
 
     Cite spans render as italic plain text (no hyperlink — flat string per
     Vipul's filing preferences). Stripped-citation spans become "[citation
     removed]" with italic styling. Internal-note spans honour the mode flag.
+
+    Lists: <ol><li>foo</li><li>bar</li></ol> each <li> becomes its own paragraph
+    using Word's "List Number" / "List Bullet" style. This is what fixes the
+    run-on Filing Checklist that previous drafts concatenated.
     """
 
     def __init__(self, doc: Document, include_inline_internal: bool) -> None:
@@ -219,6 +260,7 @@ class _HtmlToDocx(HTMLParser):
         self._current_para = None
         self._span_stack: list[str] = []  # class names of currently-open spans
         self._drop_text = False  # True when inside an internal-note span we're dropping
+        self._list_stack: list[str] = []  # 'ol' / 'ul' for the current list nesting
 
     def _ensure_para(self):
         if self._current_para is None:
@@ -234,6 +276,23 @@ class _HtmlToDocx(HTMLParser):
         elif tag == "br":
             # Treat as paragraph break for clean line spacing in Word.
             self._current_para = None
+        elif tag in ("ol", "ul"):
+            self._list_stack.append(tag)
+            self._current_para = None
+        elif tag == "li":
+            # Each list item is its own paragraph using the matching Word
+            # style — "List Number" gives 1. 2. 3. autonumbering;
+            # "List Bullet" gives bullets. Falls back to manual prefix if
+            # the style isn't available in this docx template.
+            kind = self._list_stack[-1] if self._list_stack else "ul"
+            style = "List Number" if kind == "ol" else "List Bullet"
+            try:
+                self._current_para = self._doc.add_paragraph(style=style)
+            except KeyError:
+                self._current_para = self._doc.add_paragraph()
+                prefix = "• " if kind == "ul" else f"{len(self._doc.paragraphs)}. "
+                self._current_para.add_run(prefix)
+            self._current_para.paragraph_format.space_after = Pt(3)
         elif tag == "span":
             cls = a.get("class") or ""
             self._span_stack.append(cls)
@@ -242,6 +301,12 @@ class _HtmlToDocx(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "p":
+            self._current_para = None
+        elif tag in ("ol", "ul"):
+            if self._list_stack:
+                self._list_stack.pop()
+            self._current_para = None
+        elif tag == "li":
             self._current_para = None
         elif tag == "span" and self._span_stack:
             cls = self._span_stack.pop()

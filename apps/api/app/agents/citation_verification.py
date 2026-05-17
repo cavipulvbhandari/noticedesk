@@ -28,6 +28,7 @@ import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.citation_whitelist import lookup_canonical
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -389,27 +390,51 @@ async def verify_citations(
     extracted: list[ExtractedCitation],
     provider: CitationProvider | None = None,
 ) -> list[VerifiedCitation]:
-    """Verify each extracted citation. Cache hits don't touch the network."""
+    """Verify each extracted citation.
+
+    Resolution order for each citation:
+      1. Canonical whitelist (``citation_whitelist.py``) — covers ~15 leading
+         tax-law authorities (Pushpam, Suncraft, D.Y. Beathel, Cosmic Dye,
+         etc.) that the IndianKanoon free-tier search consistently ranks
+         below noise. Whitelist hits are always VERIFIED with the canonical
+         URL; no network call.
+      2. citation_cache table (30-day TTL) — repeat lookups across drafts
+         skip the network.
+      3. Configured provider (stub or IndianKanoon).
+    """
     p = provider or get_provider()
     out: list[VerifiedCitation] = []
     for ec in extracted:
-        cached = await _cache_get(
-            session,
-            case_name=ec.case_name,
-            citation_string=ec.citation_string,
-            provider=p.name,
-        )
-        result = cached if cached is not None else await p.verify(
-            ec.case_name, ec.citation_string
-        )
-        if cached is None:
-            await _cache_put(
+        # 1. Canonical whitelist short-circuit.
+        canonical = lookup_canonical(ec.case_name)
+        if canonical is not None:
+            result = VerificationResult(
+                status="VERIFIED",
+                source_url=canonical.canonical_url,
+                verified_paragraph_text=canonical.proposition,
+                proposition_match_confidence=0.99,
+                raw_response={"canonical": True, "name": canonical.name},
+            )
+        else:
+            # 2. Cache.
+            cached = await _cache_get(
                 session,
                 case_name=ec.case_name,
                 citation_string=ec.citation_string,
                 provider=p.name,
-                result=result,
             )
+            # 3. Provider call.
+            result = cached if cached is not None else await p.verify(
+                ec.case_name, ec.citation_string
+            )
+            if cached is None:
+                await _cache_put(
+                    session,
+                    case_name=ec.case_name,
+                    citation_string=ec.citation_string,
+                    provider=p.name,
+                    result=result,
+                )
         action = {
             "VERIFIED": "passed",
             "VERIFIED_PARTIAL": "flagged",
