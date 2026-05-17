@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CompareVersionsModal } from "@/components/drafts/compare-versions-modal";
 import { DraftEmptyState } from "@/components/drafts/draft-empty-state";
 import { DraftPane } from "@/components/drafts/draft-pane";
+import { DraftProgressCard } from "@/components/drafts/draft-progress-card";
 import { DraftToolbar } from "@/components/drafts/draft-toolbar";
 import { VerificationPanel } from "@/components/drafts/verification-panel";
 import { useToast } from "@/components/ui/toast";
@@ -116,27 +117,52 @@ export function DraftTab({ noticeId, matterId }: Props) {
         onPickVersion={(id) => void loadDraft(id)}
         onCompare={() => setCompareOpen(true)}
         onRegenerate={() => {
-          // Re-open the empty-state-ish CTA inline: easiest UX is to scroll
-          // to it. For Phase 1 we just call generate with default tone.
-          void handleGenerate("formal", "", false);
+          // Reuse the same handler as first-generation; the toolbar is
+          // disabled while busy and the body below swaps to the progress
+          // card so partners see the same multi-step status as a first run.
+          void handleGenerate(
+            (draft.tone as "formal" | "assertive" | "conciliatory") || "formal",
+            "",
+            false,
+          );
         }}
         onExport={handleExport}
         busy={busy}
       />
-      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr]" style={{ minHeight: 600 }}>
-        <DraftPane
-          draftId={draft.draft_id}
-          sections={draft.sections}
-          internalPartnerNote={draft.internal_partner_note}
-          onSaved={(newId) => {
-            void (async () => {
-              await loadVersions();
-              await loadDraft(newId);
-            })();
-          }}
-        />
-        <VerificationPanel draft={draft} />
-      </div>
+      {busy ? (
+        // Regenerate path: swap the split-pane for the same progress card
+        // the first-generation flow shows. Title makes it clear the
+        // existing draft is being replaced, not lost — the previous version
+        // is still in the version dropdown when this completes.
+        <div className="px-6 py-6">
+          <DraftProgressCard
+            busy
+            eyebrow="Regenerating draft"
+            title={`Replacing v${draft.version} with a fresh generation — previous version stays in history`}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr]" style={{ minHeight: 600 }}>
+          <DraftPane
+            draftId={draft.draft_id}
+            sections={draft.sections}
+            internalPartnerNote={draft.internal_partner_note}
+            onSaved={(newId) => {
+              void (async () => {
+                await loadVersions();
+                await loadDraft(newId);
+              })();
+            }}
+          />
+          <VerificationPanel draft={draft} />
+        </div>
+      )}
+
+      {error ? (
+        <p className="mx-6 mb-4 rounded border border-alarm/30 bg-alarm-bg px-3 py-2 text-sm text-alarm">
+          {error}
+        </p>
+      ) : null}
 
       <CompareVersionsModal
         open={compareOpen}
