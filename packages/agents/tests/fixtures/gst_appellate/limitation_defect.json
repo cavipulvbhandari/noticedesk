@@ -1,0 +1,19 @@
+{
+  "scenario": "limitation_defect",
+  "description": "Appeal filed five months after service of the OIO — outside the three-month period under Section 107(1) and beyond the condonable one-month window under Section 107(4). Procedural_stickler persona should refuse to advance to merits until limitation is addressed.",
+  "variables": {
+    "MATTER_TITLE": "M/s Sunrise Polymers Pvt. Ltd. v. Deputy Commissioner, CGST Pune-II",
+    "APPEAL_NUMBER": "GST-APL-2025-PUN-00112",
+    "AR_NAME": "Ms. K. Iyer, Chartered Accountant",
+    "PERSONA": "procedural_stickler",
+    "DIFFICULTY": "standard",
+    "OIO_TEXT": "OIO No. 47/2024 dated 14 October 2024. Demand of CGST INR 18,42,750 and SGST INR 18,42,750 confirmed under Section 74 for FY 2020-21 on the ground of suppression of outward supplies in GSTR-1 vis-a-vis books. Interest under Section 50 and penalty equal to tax under Section 74(1) confirmed.",
+    "GOA_TEXT": "Ground 1: There is no suppression; the differences are reconciling items between provisional and final invoices. Ground 2: Show-cause notice was time-barred for FY 2020-21 under Section 74(10). Ground 3: Cross-examination of the departmental investigator was sought and denied, violating principles of natural justice.",
+    "WS_TEXT": "Written submissions filed on the date of hearing reiterate Grounds 1-3 and place a 12-page reconciliation chart for the disputed period.",
+    "EVIDENCE_INDEX": "Annexure 1: GSTR-1 and GSTR-3B for FY 2020-21. Annexure 2: Books reconciliation chart. Annexure 3: Show-cause notice. Annexure 4: Reply to SCN.",
+    "CITED_AUTHORITIES": "1. The settled principle that limitation under Section 107 runs from the date of communication of the order, not the date of the order itself.",
+    "PREDEPOSIT_TEXT": "Pre-deposit of 10% paid vide DRC-03 dated 12 March 2025.",
+    "LIMITATION_TEXT": "OIO date: 14 October 2024. Service date: 18 October 2024. Appeal filed: 21 March 2025. Filed beyond three months under Section 107(1) and beyond the condonable one-month window under Section 107(4). Application for condonation under Section 5 of the Limitation Act, 1963 also filed.",
+    "MISC_ORDERS": "Application under Rule 112 to place a cross-examination request pending."
+  }
+}

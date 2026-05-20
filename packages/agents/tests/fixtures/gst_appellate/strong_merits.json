@@ -1,0 +1,19 @@
+{
+  "scenario": "strong_merits",
+  "description": "Full file with written submissions, evidence index, and verified authorities on the record. Hostile persona should test the cited authorities and probe inconsistencies between OIO findings, grounds, and written submissions.",
+  "variables": {
+    "MATTER_TITLE": "M/s Globewell Logistics Pvt. Ltd. v. Joint Commissioner, CGST Mumbai-East",
+    "APPEAL_NUMBER": "GST-APL-2025-MUM-00903",
+    "AR_NAME": "Shri A. Sharma, Senior Advocate",
+    "PERSONA": "strict_pro_revenue",
+    "DIFFICULTY": "hostile",
+    "OIO_TEXT": "OIO No. 91/2024 dated 06 November 2024. Demand of CGST INR 1,12,40,000 and SGST INR 1,12,40,000 confirmed under Section 73 for FY 2022-23 on the ground that (i) input services availed at Mumbai head office were ineligible at the recipient branch under the place-of-supply provisions, and (ii) ITC on motor vehicles used for transport of employees was hit by Section 17(5). Interest and penalty under Section 73(9) confirmed. Adjudicating authority recorded at para 17 that the appellant did not produce branch-wise allocation working at the time of personal hearing.",
+    "GOA_TEXT": "Ground 1: The input services were correctly availed by the recipient branch and the cross-charge mechanism under Section 25(4) read with Circular 199/11/2023-GST has been followed. Ground 2: ITC on motor vehicles is admissible under the proviso to Section 17(5)(a) since the vehicles are used for the further supply of such vehicles in the appellant's leasing business. Ground 3: The adjudicating authority did not consider the branch-wise allocation working filed along with the reply to SCN at Annexure E.",
+    "WS_TEXT": "Written submissions dated 24 April 2025 reiterate Grounds 1-3, place reliance on Circular 199/11/2023-GST for cross-charge between distinct persons, and place reliance on the proviso to Section 17(5)(a) for the leasing-use exception. Submissions annex the branch-wise allocation working at page 14 and the lease agreements at pages 22-31.",
+    "EVIDENCE_INDEX": "Annexure A: Reply to SCN. Annexure B: GSTR-1, GSTR-3B and GSTR-2A for FY 2022-23. Annexure C: ISD invoices (claimed as cross-charge under Section 25(4)). Annexure D: Lease agreements for motor vehicles. Annexure E: Branch-wise allocation working.",
+    "CITED_AUTHORITIES": "1. Circular No. 199/11/2023-GST dated 17 July 2023 — distinct-person cross-charge of common input services. 2. The settled principle that the proviso to Section 17(5)(a) admits ITC on motor vehicles used for the further supply of such vehicles. 3. The settled principle that an order which fails to consider material on record is liable to be set aside for non-application of mind.",
+    "PREDEPOSIT_TEXT": "Pre-deposit of 10% of disputed tax paid vide DRC-03 dated 02 February 2025. Receipt on record.",
+    "LIMITATION_TEXT": "OIO date: 06 November 2024. Service date: 11 November 2024. Appeal filed: 03 February 2025. Within three months under Section 107(1).",
+    "MISC_ORDERS": "Application under Rule 112 to place additional evidence — internal cross-charge SOP and email correspondence with the Mumbai head office — filed."
+  }
+}

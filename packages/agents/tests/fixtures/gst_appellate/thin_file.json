@@ -1,0 +1,19 @@
+{
+  "scenario": "thin_file",
+  "description": "Bare-minimum file: OIO and grounds present but cryptic. No written submissions, no cited authorities, no evidence index. Exercises the empty-variable path on optional fields.",
+  "variables": {
+    "MATTER_TITLE": "M/s ABC Traders v. Assistant Commissioner, CGST Range-3, Nashik",
+    "APPEAL_NUMBER": "GST-APL-2025-NSK-00417",
+    "AR_NAME": "Shri R. Mehta, Advocate",
+    "PERSONA": "balanced",
+    "DIFFICULTY": "light",
+    "OIO_TEXT": "OIO No. 12/2024-25 dated 02 December 2024. Demand of CGST INR 4,86,200 and SGST INR 4,86,200 confirmed under Section 73 for FY 2021-22 on the ground of excess ITC availed against GSTR-2A mismatch. Interest and penalty under Section 50 / Section 73(9) also confirmed.",
+    "GOA_TEXT": "Ground 1: The impugned order proceeds on the sole basis of GSTR-2A mismatch without examining the underlying invoices and supplier returns. Ground 2: Personal hearing was granted but adjournment request was not considered. Ground 3: Interest and penalty are not sustainable in the absence of any finding of fraud or suppression.",
+    "WS_TEXT": "",
+    "EVIDENCE_INDEX": "",
+    "CITED_AUTHORITIES": "",
+    "PREDEPOSIT_TEXT": "Pre-deposit of 10% of disputed tax paid vide DRC-03 dated 18 February 2025. Receipt on record.",
+    "LIMITATION_TEXT": "OIO date: 02 December 2024. Service date: 05 December 2024. Appeal filed: 03 March 2025. Within three months under Section 107(1).",
+    "MISC_ORDERS": ""
+  }
+}
