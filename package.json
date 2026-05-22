@@ -9,8 +9,11 @@
   "scripts": {
     "lint:web": "npm --workspace @noticedesk/web run lint",
     "lint:shared": "npm --workspace @noticedesk/shared run lint --if-present",
+    "lint:extension": "npm --workspace @noticedesk/extension run lint",
     "typecheck:web": "npm --workspace @noticedesk/web run typecheck",
     "typecheck:shared": "npm --workspace @noticedesk/shared run typecheck",
-    "build:web": "npm --workspace @noticedesk/web run build"
+    "typecheck:extension": "npm --workspace @noticedesk/extension run typecheck",
+    "build:web": "npm --workspace @noticedesk/web run build",
+    "build:extension": "npm --workspace @noticedesk/extension run build"
   }
 }
