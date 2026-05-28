@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["development", "staging", "production"]
@@ -24,6 +24,19 @@ class Settings(BaseSettings):
     # is reserved for migrations and schema tests — superusers bypass RLS
     # even with FORCE.
     database_url: str = "postgresql+asyncpg://noticedesk_app:noticedesk_app@localhost:5432/noticedesk_dev"
+
+    # The async engine needs the asyncpg driver. Tooling (Makefile, psql,
+    # libpq) commonly hands out the bare ``postgres://`` / ``postgresql://``
+    # form, which SQLAlchemy can't load as an async dialect — coerce it here
+    # so an exported DATABASE_URL doesn't 500 every request.
+    @field_validator("database_url")
+    @classmethod
+    def _ensure_async_driver(cls, v: str) -> str:
+        if v.startswith("postgres://"):
+            return "postgresql+asyncpg://" + v[len("postgres://") :]
+        if v.startswith("postgresql://"):
+            return "postgresql+asyncpg://" + v[len("postgresql://") :]
+        return v
 
     auth_provider: AuthProvider = "dev"
     clerk_jwks_url: str | None = None
