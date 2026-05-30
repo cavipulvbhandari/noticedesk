@@ -35,6 +35,7 @@ from app.routes import (  # noqa: E402
     routing,
     search,
     session,
+    triage,
 )
 
 
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(clients.router, prefix="/v1")
     app.include_router(registrations.router, prefix="/v1")
     app.include_router(notices.router, prefix="/v1")
+    app.include_router(triage.router, prefix="/v1")
     app.include_router(drafts.router, prefix="/v1")
     app.include_router(documents_matters.router, prefix="/v1")
     app.include_router(search.router, prefix="/v1")
