@@ -26,11 +26,22 @@ from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.errors import NotFoundError, ValidationError
+from app.core.logging import get_logger
 from app.middleware.tenant_context import CurrentContext
 from app.services import audit
+from app.services.ocr import OCRError, get_primary_provider
 from app.services.storage import get_storage
 
+logger = get_logger(__name__)
+
 router = APIRouter()
+
+
+# Mime types where running OCR makes sense (image/PDF). Text files are
+# decoded directly. docx / xlsx land without extracted_text for now —
+# extraction for office formats is a separate problem from OCR.
+_OCR_MIME = frozenset({"application/pdf", "image/jpeg", "image/png"})
+_PLAINTEXT_MIME = frozenset({"text/plain", "text/csv"})
 
 
 _ALLOWED_MIME = frozenset(
@@ -60,6 +71,45 @@ _ALLOWED_LIFECYCLE = (
 
 def _safe_filename(name: str) -> str:
     return "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in name)[:120] or "upload.bin"
+
+
+async def _extract_text(
+    payload: bytes, mime: str, *, document_id: UUID
+) -> str | None:
+    """Best-effort text extraction at upload time.
+
+    OCR for PDF/image; UTF-8 decode for text/csv; nothing for office docs
+    (those need a different extractor and are not in scope). OCR failures
+    are non-fatal — the upload still succeeds, the partner just doesn't get
+    the document fed into draft generation. A warning is logged so the
+    operator can see the silent degradation.
+    """
+    if mime in _PLAINTEXT_MIME:
+        try:
+            return payload.decode("utf-8", errors="replace")
+        except Exception:
+            return None
+    if mime not in _OCR_MIME:
+        return None
+    try:
+        provider = get_primary_provider()
+        extracted = await provider.extract(payload, mime)
+        return extracted.text or None
+    except OCRError as e:
+        logger.warning(
+            "matter_document_ocr_failed",
+            document_id=str(document_id),
+            mime=mime,
+            error=str(e),
+        )
+        return None
+    except Exception:
+        logger.exception(
+            "matter_document_ocr_unexpected_error",
+            document_id=str(document_id),
+            mime=mime,
+        )
+        return None
 
 
 @router.post(
@@ -109,17 +159,21 @@ async def upload_matter_document(
     storage = get_storage()
     await storage.put(s3_key, payload, content_type=mime)
 
+    extracted_text = await _extract_text(payload, mime, document_id=document_id)
+
     await ctx.session.execute(
         text(
             """
             INSERT INTO documents (
                 document_id, tenant_id, matter_id, document_type,
                 filename, file_hash, s3_key, mime_type, size_bytes,
-                lifecycle_stage, uploaded_by_user_id, uploaded_at
+                lifecycle_stage, uploaded_by_user_id, uploaded_at,
+                extracted_text
             ) VALUES (
                 :id, :tid, :mid, :dtype,
                 :name, :hash, :key, :mime, :size,
-                'received', :uid, NOW()
+                'received', :uid, NOW(),
+                :etext
             )
             """
         ),
@@ -133,6 +187,7 @@ async def upload_matter_document(
             "key": s3_key,
             "mime": mime,
             "size": len(payload),
+            "etext": extracted_text,
         },
     )
 
