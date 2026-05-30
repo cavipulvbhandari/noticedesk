@@ -12,9 +12,11 @@ import { useToast } from "@/components/ui/toast";
 import {
   fetchDraft,
   fetchDraftVersions,
+  fetchTriage,
   generateDraft,
   type DraftDetail,
   type DraftSummary,
+  type TriagePayload,
 } from "@/lib/api";
 
 interface Props {
@@ -30,6 +32,7 @@ export function DraftTab({ noticeId, matterId }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [triage, setTriage] = useState<TriagePayload | null>(null);
 
   const loadVersions = useCallback(async (): Promise<DraftSummary[]> => {
     const res = await fetchDraftVersions(matterId);
@@ -46,8 +49,12 @@ export function DraftTab({ noticeId, matterId }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const list = await loadVersions();
+        const [list, t] = await Promise.all([
+          loadVersions(),
+          fetchTriage(noticeId).catch(() => null),
+        ]);
         if (cancelled) return;
+        if (t) setTriage(t);
         if (list.length > 0) {
           await loadDraft(list[0]!.draft_id);
         }
@@ -60,7 +67,7 @@ export function DraftTab({ noticeId, matterId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [loadVersions, loadDraft]);
+  }, [loadVersions, loadDraft, noticeId]);
 
   async function handleGenerate(
     tone: "formal" | "assertive" | "conciliatory",
@@ -99,18 +106,21 @@ export function DraftTab({ noticeId, matterId }: Props) {
     return <p className="py-12 text-center font-serif italic text-slate">Loading draft…</p>;
   }
 
+  const triageBanner = renderTriageBanner(triage);
+
   if (versions.length === 0 || !draft) {
     return (
-      <DraftEmptyState
-        busy={busy}
-        error={error}
-        onGenerate={handleGenerate}
-      />
+      <div className="space-y-4">
+        {triageBanner}
+        <DraftEmptyState busy={busy} error={error} onGenerate={handleGenerate} />
+      </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-line bg-white">
+    <div className="space-y-4">
+      {triageBanner}
+      <div className="overflow-hidden rounded-md border border-slate-line bg-white">
       <DraftToolbar
         current={draft}
         versions={versions}
@@ -170,6 +180,34 @@ export function DraftTab({ noticeId, matterId }: Props) {
         currentDraftId={draft.draft_id}
         onClose={() => setCompareOpen(false)}
       />
+      </div>
+    </div>
+  );
+}
+
+function renderTriageBanner(triage: TriagePayload | null) {
+  if (!triage) return null;
+  if (triage.status === "not_started") {
+    return (
+      <div className="rounded-md border border-slate-line bg-paper-tint px-4 py-3 text-[12.5px] text-ink">
+        <strong>Triage not started.</strong> Run triage from the Triage tab
+        first to give the drafter a document checklist — partners who skip
+        triage tend to see more <code className="rounded bg-white px-1.5 py-0.5 text-[11px]">[ASSUMED]</code>{" "}
+        markers in the result. You can still generate now.
+      </div>
+    );
+  }
+  const pendingRequired = triage.checklist.filter(
+    (c) => c.is_required && c.status === "pending",
+  );
+  if (pendingRequired.length === 0) return null;
+  return (
+    <div className="rounded-md border border-gold/40 bg-gold/10 px-4 py-3 text-[12.5px] text-ink">
+      <strong>{pendingRequired.length}</strong> required document
+      {pendingRequired.length === 1 ? "" : "s"} from the triage checklist are
+      still pending. You can still generate a first-cut draft; the drafter
+      will mark those facts as <code className="rounded bg-white px-1.5 py-0.5 text-[11px]">[DOCUMENT REQUESTED]</code>{" "}
+      so they&rsquo;re easy to spot.
     </div>
   );
 }

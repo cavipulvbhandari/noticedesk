@@ -35,7 +35,21 @@ from app.services.llm import (
 logger = get_logger(__name__)
 
 PROMPTS_DIR: Final[Path] = Path(__file__).parent / "prompts"
-PROMPT_VERSION: Final[str] = "drafting_v2"
+PROMPT_VERSION: Final[str] = "drafting_v3"
+
+# Per-document excerpt cap for triage-attached supporting evidence. 5K chars
+# (~1.2K tokens) is enough for the drafter to extract figures + key dates;
+# bigger uploads (full GSTR-3B PDFs, ITC ledger dumps) get truncated. Total
+# block size is capped further by SUPPORTING_EVIDENCE_MAX_CHARS.
+SUPPORTING_DOC_EXCERPT_CHARS: Final[int] = int(
+    __import__("os").environ.get("DRAFTING_SUPPORTING_DOC_EXCERPT_CHARS", "5000")
+)
+# Overall ceiling so a partner who attaches 20 docs doesn't blow the input
+# token budget. Items beyond this cap are listed by filename but excerpt is
+# omitted; the drafter can still reference them by name.
+SUPPORTING_EVIDENCE_MAX_CHARS: Final[int] = int(
+    __import__("os").environ.get("DRAFTING_SUPPORTING_EVIDENCE_MAX_CHARS", "40000")
+)
 
 # How many characters of notice OCR text to feed the drafter. 20K handles
 # the typical real-world range (1-page ASMT-10 through 15-page DRC-01 SCN);
@@ -66,6 +80,30 @@ class DraftSection:
     num: int
     title: str
     body_html: str
+
+
+@dataclass(frozen=True, slots=True)
+class SupportingDoc:
+    """One triage-attached document. Carries the checklist context that
+    made the partner choose it, so the drafter can tie evidence → allegation
+    precisely instead of treating it as an undifferentiated doc dump."""
+
+    requirement_label: str
+    requirement_rationale: str
+    requirement_doc_type: str | None
+    filename: str
+    document_type: str | None
+    excerpt: str  # truncated to SUPPORTING_DOC_EXCERPT_CHARS by the loader
+
+
+@dataclass(frozen=True, slots=True)
+class PendingRequirement:
+    """A checklist item the partner has NOT attached a doc to and has NOT
+    marked N/A. The drafter sees these as "[DOCUMENT REQUESTED]" warrants."""
+
+    label: str
+    rationale: str
+    is_required: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +145,10 @@ class DraftingInput:
     sibling_notices: list[dict[str, Any]] = field(default_factory=list)
     documents: list[dict[str, Any]] = field(default_factory=list)
     cross_registration_context: list[dict[str, Any]] = field(default_factory=list)
+    # Triage-attached evidence. Empty when the partner skipped triage —
+    # the drafter degrades cleanly to the v2 behaviour in that case.
+    supporting_documents: list[SupportingDoc] = field(default_factory=list)
+    pending_requirements: list[PendingRequirement] = field(default_factory=list)
 
 
 async def load_drafting_input(
@@ -206,6 +248,62 @@ async def load_drafting_input(
         )
     ).mappings().all()
 
+    # Triage-attached evidence (status='uploaded') with each doc's extracted
+    # text excerpt, plus the checklist context (label + rationale) so the
+    # drafter knows which allegation each doc was attached against.
+    supporting_rows = (
+        await session.execute(
+            text(
+                """
+                SELECT r.label        AS req_label,
+                       r.rationale    AS req_rationale,
+                       r.doc_type     AS req_doc_type,
+                       d.filename     AS doc_filename,
+                       d.document_type AS doc_document_type,
+                       LEFT(COALESCE(d.extracted_text, ''), :doc_chars) AS doc_excerpt
+                FROM notice_document_requirements r
+                JOIN documents d ON d.document_id = r.document_id
+                WHERE r.notice_id = :nid AND r.status = 'uploaded'
+                ORDER BY r.position ASC
+                """
+            ),
+            {"nid": str(notice_id), "doc_chars": SUPPORTING_DOC_EXCERPT_CHARS},
+        )
+    ).mappings().all()
+    supporting_docs = [
+        SupportingDoc(
+            requirement_label=r["req_label"],
+            requirement_rationale=r["req_rationale"],
+            requirement_doc_type=r["req_doc_type"],
+            filename=r["doc_filename"],
+            document_type=r["doc_document_type"],
+            excerpt=r["doc_excerpt"] or "",
+        )
+        for r in supporting_rows
+    ]
+
+    pending_rows = (
+        await session.execute(
+            text(
+                """
+                SELECT label, rationale, is_required
+                FROM notice_document_requirements
+                WHERE notice_id = :nid AND status = 'pending'
+                ORDER BY position ASC
+                """
+            ),
+            {"nid": str(notice_id)},
+        )
+    ).mappings().all()
+    pending_reqs = [
+        PendingRequirement(
+            label=r["label"],
+            rationale=r["rationale"],
+            is_required=bool(r["is_required"]),
+        )
+        for r in pending_rows
+    ]
+
     cross_block: list[dict[str, Any]] = []
     if include_cross_registration:
         cross_block = [
@@ -275,6 +373,8 @@ async def load_drafting_input(
         sibling_notices=[dict(r) for r in sibling_rows],
         documents=[dict(r) for r in doc_rows],
         cross_registration_context=cross_block,
+        supporting_documents=supporting_docs,
+        pending_requirements=pending_reqs,
     )
 
 
@@ -355,6 +455,10 @@ def _render_user_prompt(template: str, di: DraftingInput) -> str:
         )
     )
 
+    supporting_evidence_block = _render_supporting_evidence(
+        di.supporting_documents, di.pending_requirements
+    )
+
     return (
         template
         .replace("{client.legal_name}", di.client_legal_name)
@@ -381,6 +485,7 @@ def _render_user_prompt(template: str, di: DraftingInput) -> str:
             ),
         )
         .replace("{notice_ocr_excerpt}", ocr_block)
+        .replace("{supporting_evidence_block}", supporting_evidence_block)
         .replace(
             "{raw_extracted_json}",
             json.dumps(di.raw_extracted_json, indent=2, ensure_ascii=False),
@@ -398,6 +503,60 @@ def _format_list(items: list[dict[str, Any]], fmt, *, empty: str) -> str:
     if not items:
         return empty
     return "\n".join(fmt(i) for i in items)
+
+
+def _render_supporting_evidence(
+    docs: list["SupportingDoc"],
+    pending: list["PendingRequirement"],
+) -> str:
+    """Render the SUPPORTING EVIDENCE block for the user prompt.
+
+    Three sub-sections: attached (with excerpts), pending (so the drafter
+    knows to emit [DOCUMENT REQUESTED]), and a "none" footer when triage
+    was never run / has no items. Caps total chars at
+    SUPPORTING_EVIDENCE_MAX_CHARS so a 20-doc dump doesn't blow input budget.
+    """
+    if not docs and not pending:
+        return (
+            "(no triage checklist for this notice — either triage hasn't "
+            "been run yet or the matter has no document requirements. "
+            "Fall back to the DOCUMENTS ATTACHED block below.)"
+        )
+
+    parts: list[str] = []
+    if docs:
+        parts.append("ATTACHED (use these as primary evidence):")
+        budget = SUPPORTING_EVIDENCE_MAX_CHARS
+        for idx, d in enumerate(docs, start=1):
+            header = (
+                f"\n[{idx}] {d.requirement_label}\n"
+                f"    rationale: {d.requirement_rationale}\n"
+                f"    document : {d.filename}"
+                + (f" ({d.document_type})" if d.document_type else "")
+                + "\n    excerpt  :\n"
+            )
+            parts.append(header)
+            excerpt = (d.excerpt or "").strip()
+            if not excerpt:
+                parts.append("        (no extracted text available for this document)")
+                continue
+            if budget <= 0:
+                parts.append(
+                    "        (excerpt omitted — total supporting-evidence budget "
+                    "exceeded; reference by filename only)"
+                )
+                continue
+            chunk = excerpt[:budget]
+            parts.append("        " + chunk.replace("\n", "\n        "))
+            budget -= len(chunk)
+
+    if pending:
+        parts.append("\nPENDING — not attached (write [DOCUMENT REQUESTED] for facts that would have come from these):")
+        for p in pending:
+            tag = "REQUIRED" if p.is_required else "optional"
+            parts.append(f"  - [{tag}] {p.label} — {p.rationale}")
+
+    return "\n".join(parts)
 
 
 def _validate(payload: dict[str, Any]) -> None:

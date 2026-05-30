@@ -211,4 +211,59 @@ BEGIN
     END IF;
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- Pre-seeded triage on the Acme ITC-mismatch ASMT-10 (notice #1) so the
+-- demo opens onto a populated Triage tab — partner can show the summary +
+-- checklist in 5 seconds instead of waiting on a live LLM call.
+-- ---------------------------------------------------------------------------
+
+INSERT INTO notice_triage (
+    notice_id, tenant_id, summary, status, prompt_version, model, provider_name
+) VALUES (
+    '00000000-4444-5555-6666-000000000001',
+    '11111111-1111-1111-1111-111111111111',
+    E'The State Tax Officer (STO Range 5, Pune-1) has issued an ASMT-10 alleging an ITC mismatch of approximately Rs 14.2 lakh for FY 2022-23, on the GST registration of Acme Industries Private Limited. The officer asserts that Input Tax Credit availed in GSTR-3B exceeds the credit auto-populated in GSTR-2A/2B, and calls for a reconciliation along with supporting tax invoices and e-way bills.\n\nThe reply window per the notice closes on 17 May 2026 (15 days). Failure to respond will likely escalate to a DRC-01A intimation followed by a Section 73 SCN (DRC-01); pre-deposit consequences kick in only at the appeal stage. There is no hearing date set in the notice itself.\n\nDefence focus: (a) reconcile the 3B vs 2A gap by isolating IGST credits on import / RCM that are excluded from 2A by design (Suncraft Energy / D.Y. Beathel line on supplier-default ITC denial may apply), and (b) raise the procedural objection that an ASMT-10 is a scrutiny intimation, not an SCN, and the proceedings cannot directly travel to demand without prior reconciliation engagement.',
+    'ready_to_gather',
+    'notice_triage_v1',
+    'seed',
+    'seed'
+) ON CONFLICT (notice_id) DO NOTHING;
+
+INSERT INTO notice_document_requirements (
+    requirement_id, notice_id, tenant_id, label, rationale, doc_type, is_required, status, position
+) VALUES
+    ('cccccccc-1111-1111-1111-000000000001', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Form GSTR-3B for FY 2022-23 (April 2022 to March 2023)',
+     'Officer alleges short payment / excess ITC of Rs 14.2L; 3B reconciles their claimed mismatch figure against actually-declared liability.',
+     'gstr_3b', TRUE, 'pending', 1),
+    ('cccccccc-1111-1111-1111-000000000002', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Form GSTR-2A / 2B for FY 2022-23 (auto-populated ITC statement)',
+     'Direct counter to the officer''s 3B-vs-2A allegation; isolates IGST-on-imports / RCM that 2A excludes by design.',
+     'gstr_2a_2b', TRUE, 'pending', 2),
+    ('cccccccc-1111-1111-1111-000000000003', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Reconciliation statement: GSTR-3B ITC vs GSTR-2A/2B for FY 2022-23',
+     'Workpaper that ties the two returns together and exposes the legitimate gap (IGST imports, RCM, missed supplier filings).',
+     'reconciliation', TRUE, 'pending', 3),
+    ('cccccccc-1111-1111-1111-000000000004', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Bill of Entry register for FY 2022-23 (imports)',
+     'Establishes IGST credit on imports that flows from ICEGATE, not GSTR-2A — the largest legitimate source of 3B-vs-2A mismatch.',
+     'invoice', TRUE, 'pending', 4),
+    ('cccccccc-1111-1111-1111-000000000005', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Sample of high-value tax invoices for the disputed ITC (top 10 by value)',
+     'Backs each disputed credit line with the underlying invoice; pre-empts the officer asking for them at the next hearing.',
+     'invoice', FALSE, 'pending', 5),
+    ('cccccccc-1111-1111-1111-000000000006', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'E-way bill register for FY 2022-23',
+     'Corroborates physical movement of goods for ITC-claimed purchases; standard officer follow-up after invoice production.',
+     'e_way_bill', FALSE, 'pending', 6),
+    ('cccccccc-1111-1111-1111-000000000007', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Vendor master + RCM payment register for FY 2022-23',
+     'Identifies RCM credits paid in cash (which appear in 3B but not 2A) and supplier defaulters relevant to the Suncraft / D.Y. Beathel line.',
+     'ledger_extract', FALSE, 'pending', 7),
+    ('cccccccc-1111-1111-1111-000000000008', '00000000-4444-5555-6666-000000000001', '11111111-1111-1111-1111-111111111111',
+     'Annual return GSTR-9 for FY 2022-23 (if filed)',
+     'Cross-check against the annual reconciliation; if no 9C, note that fact for the procedural defence.',
+     'gstr_9', FALSE, 'pending', 8)
+ON CONFLICT (requirement_id) DO NOTHING;
+
 COMMIT;

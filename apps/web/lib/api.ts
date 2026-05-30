@@ -717,3 +717,78 @@ export function addRegistration(
 ): Promise<{ registration_id: string }> {
   return postJson(`/api/registrations/${clientId}`, body);
 }
+
+// ---- Triage --------------------------------------------------------------
+
+export type TriageStatus =
+  | "not_started"
+  | "generating"
+  | "ready_to_gather"
+  | "ready_to_draft"
+  | "drafted";
+
+export type ChecklistItemStatus = "pending" | "uploaded" | "not_applicable";
+
+export interface ChecklistItem {
+  requirement_id: string;
+  label: string;
+  rationale: string;
+  doc_type: string | null;
+  is_required: boolean;
+  status: ChecklistItemStatus;
+  position: number;
+  marked_na_reason: string | null;
+  document_id: string | null;
+  document_filename: string | null;
+}
+
+export interface TriagePayload {
+  notice_id: string;
+  status: TriageStatus;
+  summary: string | null;
+  generated_at: string | null;
+  prompt_version: string | null;
+  model: string | null;
+  provider_name: string | null;
+  checklist: ChecklistItem[];
+}
+
+export async function fetchTriage(noticeId: string): Promise<TriagePayload> {
+  const res = await fetch(`/api/notices/${noticeId}/triage`, { cache: "no-store" });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `fetch triage failed (${res.status})`);
+  }
+  return (await res.json()) as TriagePayload;
+}
+
+export async function runTriage(noticeId: string): Promise<TriagePayload> {
+  const res = await fetch(`/api/notices/${noticeId}/triage`, { method: "POST" });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+    throw new Error(j?.error?.message ?? `triage failed (${res.status})`);
+  }
+  return (await res.json()) as TriagePayload;
+}
+
+export async function attachDocumentToChecklistItem(
+  noticeId: string,
+  requirementId: string,
+  documentId: string,
+): Promise<TriagePayload> {
+  return postJson(
+    `/api/notices/${noticeId}/checklist/${requirementId}/attach`,
+    { document_id: documentId },
+  );
+}
+
+export async function markChecklistItemNotApplicable(
+  noticeId: string,
+  requirementId: string,
+  reason: string,
+): Promise<TriagePayload> {
+  return postJson(
+    `/api/notices/${noticeId}/checklist/${requirementId}/mark-na`,
+    { reason },
+  );
+}

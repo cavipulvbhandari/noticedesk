@@ -9,6 +9,7 @@ import { MatterHeader } from "@/components/matters/matter-header";
 import { MatterTabs, type MatterTab } from "@/components/matters/matter-tabs";
 import { NoticeTab } from "@/components/matters/notice-tab";
 import { TimelineTab } from "@/components/matters/timeline-tab";
+import { TriageTab } from "@/components/matters/triage-tab";
 import { useToast } from "@/components/ui/toast";
 import { fetchNotice, transitionLifecycle, type NoticeDetail } from "@/lib/api";
 
@@ -116,8 +117,17 @@ export default function MatterPage({ params }: Props) {
       <MatterTabs active={tab} onChange={setTab} />
 
       {tab === "notice" ? <NoticeTab data={data} /> : null}
+      {tab === "triage" ? (
+        <TriageTab
+          noticeId={params.id}
+          matterId={notice.matter_id}
+          onGoToDraft={() => setTab("draft")}
+        />
+      ) : null}
       {tab === "documents" ? <DocumentsTab data={data} /> : null}
-      {tab === "draft" ? <DraftTab noticeId={params.id} matterId={notice.matter_id} /> : null}
+      {tab === "draft" ? (
+        <DraftTab noticeId={params.id} matterId={notice.matter_id} />
+      ) : null}
       {tab === "timeline" ? <TimelineTab noticeId={params.id} /> : null}
     </main>
   );

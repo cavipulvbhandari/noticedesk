@@ -191,6 +191,20 @@ async def run_generate_draft(job: GenerateDraftJob) -> GenerateDraftResult:
                 },
             )
 
+        # Advance triage status (when present) so the Triage tab UI shows
+        # "drafted" — purely advisory; the API never blocks drafting on
+        # triage status (soft-block policy).
+        await session.execute(
+            text(
+                """
+                UPDATE notice_triage
+                SET status = 'drafted'
+                WHERE notice_id = :nid
+                """
+            ),
+            {"nid": str(job.notice_id)},
+        )
+
         await audit.emit(
             session,
             tenant_id=job.tenant_id,
@@ -207,6 +221,10 @@ async def run_generate_draft(job: GenerateDraftJob) -> GenerateDraftResult:
                 "tone": job.tone,
                 "sections": len(final_sections),
                 "citation_summary": counts,
+                "supporting_docs": len(di.supporting_documents),
+                "pending_required": sum(
+                    1 for p in di.pending_requirements if p.is_required
+                ),
             },
             risk_tier=1,
         )

@@ -2,10 +2,16 @@
 
 import { cn } from "@/lib/cn";
 
-export type MatterTab = "notice" | "documents" | "draft" | "timeline";
+export type MatterTab =
+  | "notice"
+  | "triage"
+  | "documents"
+  | "draft"
+  | "timeline";
 
 const TABS: { key: MatterTab; label: string }[] = [
   { key: "notice", label: "Notice" },
+  { key: "triage", label: "Triage" },
   { key: "documents", label: "Documents" },
   { key: "draft", label: "Draft reply" },
   { key: "timeline", label: "Timeline" },
