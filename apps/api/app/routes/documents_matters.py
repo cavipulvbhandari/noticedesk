@@ -187,6 +187,7 @@ async def upload_matter_document(
             "key": s3_key,
             "mime": mime,
             "size": len(payload),
+            "uid": ctx.claims.user_id,
             "etext": extracted_text,
         },
     )
