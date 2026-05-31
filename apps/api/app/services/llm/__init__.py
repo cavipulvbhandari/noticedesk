@@ -15,9 +15,11 @@ from app.services.llm.base import (
 )
 from app.services.llm.factory import (
     KNOWN_LLM_PROVIDERS,
+    get_llm_for_agent,
     get_llm_provider,
     get_primary_llm,
     get_secondary_llm,
+    get_secondary_llm_for_agent,
 )
 
 __all__ = [
@@ -27,7 +29,9 @@ __all__ = [
     "LLMProvider",
     "LLMResponse",
     "LLMTransientError",
+    "get_llm_for_agent",
     "get_llm_provider",
     "get_primary_llm",
     "get_secondary_llm",
+    "get_secondary_llm_for_agent",
 ]

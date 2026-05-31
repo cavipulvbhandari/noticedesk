@@ -113,10 +113,40 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o"
     openai_timeout_seconds: float = 180.0
 
+    # ---- Per-agent model overrides -----------------------------------------
+    # Drafting needs Opus's writing quality (it produces 6-12K output tokens
+    # of structured legal prose). Parsing + triage are extraction tasks —
+    # Sonnet 4.6 is ~5-10x cheaper and indistinguishable in quality on those
+    # workloads. The split saves roughly 50% of per-notice LLM cost.
+    #
+    # Empty string → fall back to the per-provider default (anthropic_model
+    # / openai_model) so single-tier configs (cheap-dev, OpenAI-only) keep
+    # working without any new env vars.
+    llm_model_drafting: str = ""
+    llm_model_triage: str = "claude-sonnet-4-6"
+    llm_model_parsing: str = "claude-sonnet-4-6"
+
     # Agents
     document_parsing_prompt_version: str = "v1"
     document_parsing_max_tokens: int = 4096
     document_parsing_temperature: float = 0.0
+
+    def model_for_agent(self, agent: str, *, provider: str) -> str:
+        """Resolve the model name for a (provider, agent) combination.
+
+        Anthropic-specific overrides are honoured for the Anthropic provider;
+        every other provider falls through to its own native default so
+        accidentally pointing ``LLM_MODEL_TRIAGE=claude-...`` at an OpenAI
+        deployment doesn't 400.
+        """
+        if provider != "anthropic":
+            return self.openai_model if provider == "openai" else ""
+        per_agent = {
+            "drafting": self.llm_model_drafting,
+            "triage": self.llm_model_triage,
+            "parsing": self.llm_model_parsing,
+        }.get(agent, "")
+        return per_agent or self.anthropic_model
 
     @property
     def is_dev_auth_allowed(self) -> bool:

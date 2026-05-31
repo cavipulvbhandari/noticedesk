@@ -28,8 +28,8 @@ from app.services.llm import (
     LLMError,
     LLMProvider,
     LLMTransientError,
-    get_primary_llm,
-    get_secondary_llm,
+    get_llm_for_agent,
+    get_secondary_llm_for_agent,
 )
 
 logger = get_logger(__name__)
@@ -325,7 +325,10 @@ async def generate_triage(ti: TriageInput) -> GeneratedTriage:
     user = _render_user_prompt(user_template, ti)
 
     last_err: Exception | None = None
-    for provider in (get_primary_llm(), get_secondary_llm()):
+    for provider in (
+        get_llm_for_agent("triage"),
+        get_secondary_llm_for_agent("triage"),
+    ):
         if provider is None:
             continue
         try:

@@ -26,8 +26,8 @@ from app.services.llm import (
     LLMError,
     LLMProvider,
     LLMTransientError,
-    get_primary_llm,
-    get_secondary_llm,
+    get_llm_for_agent,
+    get_secondary_llm_for_agent,
 )
 
 logger = get_logger(__name__)
@@ -83,7 +83,7 @@ class ParseInput:
 
 async def parse_document(payload: ParseInput) -> ParsedDocument:
     """Run the parsing agent against the primary LLM with secondary fallback."""
-    primary = get_primary_llm()
+    primary = get_llm_for_agent("parsing")
     try:
         return await _call_provider(primary, payload)
     except LLMTransientError as e:
@@ -93,7 +93,7 @@ async def parse_document(payload: ParseInput) -> ParsedDocument:
     except LLMError as e:
         logger.warn("document_parsing_primary_permanent", error=str(e))
 
-    secondary = get_secondary_llm()
+    secondary = get_secondary_llm_for_agent("parsing")
     if secondary is None:
         raise LLMError("document parsing primary failed and no secondary configured")
     return await _call_provider(secondary, payload)
