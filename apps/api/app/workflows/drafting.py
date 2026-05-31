@@ -151,7 +151,7 @@ async def run_generate_draft(job: GenerateDraftJob) -> GenerateDraftResult:
                 "tone": job.tone,
                 "sections": json.dumps(final_sections),
                 "csum": json.dumps(counts),
-                "pmap": json.dumps(paragraph_to_source_map),
+                "pmap": json.dumps(paragraph_to_source_map, default=str),
                 "ipn": generated.internal_partner_note,
                 "uid": str(job.user_id),
             },
@@ -262,8 +262,16 @@ def _build_paragraph_map(
     """
     rows: list[dict[str, Any]] = []
     notice_id = di.notice.get("notice_id")
+    # Stringify the document_id — asyncpg returns it as a Python uuid.UUID,
+    # which json.dumps can't serialize. The map is persisted as JSONB and
+    # the source-map UI reads document_id as a string.
     doc_summaries = [
-        {"document_id": d.get("document_id"), "filename": d.get("filename")}
+        {
+            "document_id": (
+                str(d["document_id"]) if d.get("document_id") is not None else None
+            ),
+            "filename": d.get("filename"),
+        }
         for d in di.documents
     ]
     citation_sources = [
