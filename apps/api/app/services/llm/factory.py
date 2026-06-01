@@ -40,6 +40,7 @@ def _build_openai(model: str) -> LLMProvider:
         api_key=s.openai_api_key,
         model=model,
         timeout_seconds=s.openai_timeout_seconds,
+        base_url=s.openai_base_url or None,
     )
 
 

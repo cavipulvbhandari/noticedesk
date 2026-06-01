@@ -129,6 +129,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o"
     openai_timeout_seconds: float = 180.0
+    # Override to talk to an OpenAI-compatible endpoint instead of
+    # api.openai.com — Groq, Cerebras, Together, Fireworks, OpenRouter,
+    # Ollama all work. Leave empty for OpenAI itself.
+    openai_base_url: str = ""
 
     # ---- Per-agent model overrides -----------------------------------------
     # Drafting needs Opus's writing quality (it produces 6-12K output tokens

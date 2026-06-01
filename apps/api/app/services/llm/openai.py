@@ -23,11 +23,16 @@ class OpenAIProvider(LLMProvider):
         model: str = "gpt-4o",
         client: Any | None = None,
         timeout_seconds: float = 180.0,
+        # When set, points the SDK at any OpenAI-compatible endpoint —
+        # Groq, Cerebras, Together, Fireworks, OpenRouter, Ollama, etc.
+        # Leave None to talk to api.openai.com.
+        base_url: str | None = None,
     ) -> None:
         self._api_key = api_key
         self.model = model
         self._client = client
         self._timeout = timeout_seconds
+        self._base_url = base_url
 
     def _ensure_client(self) -> Any:
         if self._client is not None:
@@ -38,7 +43,10 @@ class OpenAIProvider(LLMProvider):
             raise LLMError(
                 "openai SDK not installed; install it or pick a different provider"
             ) from e
-        self._client = AsyncOpenAI(api_key=self._api_key)
+        kwargs: dict[str, Any] = {"api_key": self._api_key}
+        if self._base_url:
+            kwargs["base_url"] = self._base_url
+        self._client = AsyncOpenAI(**kwargs)
         return self._client
 
     async def generate_text(
