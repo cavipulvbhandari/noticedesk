@@ -29,6 +29,8 @@ export function EditClientModal({ open, client, onClose, onSaved }: Props) {
   const [tradeName, setTradeName] = useState(client.trade_name ?? "");
   const [entityType, setEntityType] = useState(client.entity_type ?? ENTITY_TYPES[0]!);
   const [industry, setIndustry] = useState(client.industry ?? "");
+  const [email, setEmail] = useState(client.email ?? "");
+  const [phone, setPhone] = useState(client.phone ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +40,8 @@ export function EditClientModal({ open, client, onClose, onSaved }: Props) {
       setTradeName(client.trade_name ?? "");
       setEntityType(client.entity_type ?? ENTITY_TYPES[0]!);
       setIndustry(client.industry ?? "");
+      setEmail(client.email ?? "");
+      setPhone(client.phone ?? "");
       setError(null);
       setSubmitting(false);
     }
@@ -64,6 +68,8 @@ export function EditClientModal({ open, client, onClose, onSaved }: Props) {
         trade_name: tradeName.trim() || null,
         entity_type: entityType,
         industry: industry.trim() || null,
+        email: email.trim() || null,
+        phone: phone.trim() || null,
       });
       onSaved();
     } catch (e: unknown) {
@@ -138,6 +144,24 @@ export function EditClientModal({ open, client, onClose, onSaved }: Props) {
               type="text"
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
+            />
+          </FormField>
+
+          <FormField label="Client email (for checklist + replies)">
+            <input
+              type="email"
+              value={email}
+              placeholder="finance@acme.in"
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </FormField>
+
+          <FormField label="Client phone (optional)">
+            <input
+              type="tel"
+              value={phone}
+              placeholder="+91 98xxxxxxxx"
+              onChange={(e) => setPhone(e.target.value)}
             />
           </FormField>
 

@@ -117,6 +117,7 @@ async def get_client(ctx: CurrentContext, client_id: UUID) -> dict[str, Any]:
                 """
                 SELECT client_id, pan, legal_name, trade_name, entity_type,
                        cin, date_of_incorporation_or_birth, industry,
+                       email, phone,
                        created_at, updated_at
                 FROM clients
                 WHERE client_id = :cid AND deleted_at IS NULL
@@ -178,6 +179,8 @@ async def get_client(ctx: CurrentContext, client_id: UUID) -> dict[str, Any]:
             else None
         ),
         "industry": client_row["industry"],
+        "email": client_row["email"],
+        "phone": client_row["phone"],
         "registrations": [
             {
                 "registration_id": str(r["registration_id"]),
@@ -213,6 +216,11 @@ class UpdateClientRequest(BaseModel):
     entity_type: str | None = None
     industry: str | None = None
     cin: str | None = None
+    # Optional — when present, drives the triage checklist email to the
+    # client and (Stage 2) the reminder-recipient pool. Loose validation;
+    # the DB CHECK constraint catches obvious malformed addresses.
+    email: str | None = Field(default=None, max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
 
 
 @router.patch("/clients/{client_id}")
@@ -226,7 +234,7 @@ async def update_client(
     before = (
         await ctx.session.execute(
             text(
-                "SELECT legal_name, trade_name, entity_type, industry, cin "
+                "SELECT legal_name, trade_name, entity_type, industry, cin, email, phone "
                 "FROM clients WHERE client_id = :cid AND deleted_at IS NULL"
             ),
             {"cid": str(client_id)},

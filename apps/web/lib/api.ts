@@ -156,6 +156,8 @@ export interface ClientDetail {
   cin: string | null;
   date_of_incorporation_or_birth: string | null;
   industry: string | null;
+  email: string | null;
+  phone: string | null;
   registrations: ClientRegistration[];
 }
 
@@ -171,6 +173,8 @@ export interface UpdateClientBody {
   entity_type?: string | null;
   industry?: string | null;
   cin?: string | null;
+  email?: string | null;
+  phone?: string | null;
 }
 
 export async function updateClient(
@@ -742,6 +746,14 @@ export interface ChecklistItem {
   document_filename: string | null;
 }
 
+export interface ClientEmailStatus {
+  status: "sent" | "skipped" | "failed";
+  to?: string | null;
+  reason?: string;
+  provider?: string;
+  message_id?: string;
+}
+
 export interface TriagePayload {
   notice_id: string;
   status: TriageStatus;
@@ -751,6 +763,9 @@ export interface TriagePayload {
   model: string | null;
   provider_name: string | null;
   checklist: ChecklistItem[];
+  // Only present on the POST /triage response (the GET endpoint does not
+  // re-send the email and so does not surface a status). Undefined → ignore.
+  client_email_status?: ClientEmailStatus;
 }
 
 export async function fetchTriage(noticeId: string): Promise<TriagePayload> {

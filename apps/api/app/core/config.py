@@ -97,6 +97,23 @@ class Settings(BaseSettings):
     email_inbound_webhook_secret: str | None = None
     email_inbound_domain: str = "noticedesk.in"
 
+    # ---- Outbound email ----------------------------------------------------
+    # 'smtp' is the universal choice (Gmail / Mailtrap / SES-SMTP / Postmark
+    # all work). 'stub' writes to EMAIL_STUB_DIR — useful for tests and
+    # offline preview.
+    email_provider: str = "stub"
+    email_from_address: str = "noreply@noticedesk.in"
+    email_from_name: str = "NoticeDesk"
+    email_stub_dir: str = "/tmp/noticedesk-emails"
+    # SMTP — only used when email_provider == 'smtp'. Gmail: smtp.gmail.com
+    # port 587 with an app password. Mailtrap / Postmark / SES SMTP use
+    # similar STARTTLS-on-587 pattern.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+
     # ---- Sprint 3: LLM providers -------------------------------------------
     llm_provider_primary: str = "stub"
     llm_provider_secondary: str | None = None

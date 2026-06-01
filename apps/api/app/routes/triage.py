@@ -29,6 +29,7 @@ from app.core.logging import get_logger
 from app.middleware.tenant_context import CurrentContext
 from app.services import audit
 from app.services.llm import LLMError
+from app.workflows.email_sends import send_checklist_to_client
 
 logger = get_logger(__name__)
 
@@ -155,7 +156,19 @@ async def run_triage(ctx: CurrentContext, notice_id: UUID) -> dict[str, Any]:
     )
     await ctx.session.commit()
 
-    return await _fetch_triage_payload(ctx, notice_id)
+    # Fire the document-checklist email to the client. Best-effort: a
+    # missing client email or SMTP error must NOT block the triage response.
+    email_status = await send_checklist_to_client(
+        ctx.session,
+        tenant_id=ctx.claims.tenant_id,
+        user_id=ctx.claims.user_id,
+        notice_id=notice_id,
+    )
+    await ctx.session.commit()
+
+    payload = await _fetch_triage_payload(ctx, notice_id)
+    payload["client_email_status"] = email_status
+    return payload
 
 
 # ---------------------------------------------------------------------------

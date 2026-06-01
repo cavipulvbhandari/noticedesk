@@ -75,8 +75,17 @@ export function TriageTab({ noticeId, matterId, onGoToDraft }: Props) {
     try {
       const next = await runTriage(noticeId);
       setTriage(next);
+      const es = next.client_email_status;
+      const emailBit =
+        es?.status === "sent"
+          ? ` · checklist emailed to ${es.to}`
+          : es?.status === "skipped"
+            ? " · client email not on file"
+            : es?.status === "failed"
+              ? ` · checklist email failed (${es.reason ?? "unknown"})`
+              : "";
       toast(
-        `Triage complete · ${next.checklist.length} checklist items`,
+        `Triage complete · ${next.checklist.length} checklist items${emailBit}`,
         "success",
       );
     } catch (e: unknown) {
