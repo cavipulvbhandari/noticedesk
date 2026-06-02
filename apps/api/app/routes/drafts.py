@@ -265,7 +265,6 @@ async def edit_section(
             "at": "NOW",  # replaced server-side by NOW(); see JSONB write below
             "user_id": ctx.claims.user_id,
             "section_num": body.section_num,
-            "before_html": before_body,
             "before_length": len(before_body),
             "after_length": len(body.body_html),
             "type": "section_edit",
@@ -447,14 +446,6 @@ async def export_draft(
         cover=cover,
         sections=row["sections"] or [],
         internal_partner_note=row["internal_partner_note"],
-    )
-
-    await ctx.session.execute(
-        text(
-            "UPDATE drafts SET training_signal = 'positive' "
-            "WHERE draft_id = :did AND training_signal IS NULL"
-        ),
-        {"did": str(draft_id)},
     )
 
     await audit.emit(
