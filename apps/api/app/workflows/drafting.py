@@ -108,7 +108,9 @@ async def run_generate_draft(job: GenerateDraftJob) -> GenerateDraftResult:
             else:
                 counts["stripped"] += 1
 
-        # 7. Pick the next version for this matter.
+        # 7. Pick the next version for this matter and mark any unlabeled
+        #    prior drafts as 'negative' — partner triggered a re-generation
+        #    without exporting, which is an implicit rejection signal.
         next_version = (
             await session.execute(
                 text(
@@ -118,6 +120,15 @@ async def run_generate_draft(job: GenerateDraftJob) -> GenerateDraftResult:
                 {"mid": str(job.matter_id)},
             )
         ).scalar_one()
+
+        if next_version > 1:
+            await session.execute(
+                text(
+                    "UPDATE drafts SET training_signal = 'negative' "
+                    "WHERE matter_id = :mid AND training_signal IS NULL"
+                ),
+                {"mid": str(job.matter_id)},
+            )
 
         # 8. Persist the draft row.
         draft_id: UUID = uuid4()

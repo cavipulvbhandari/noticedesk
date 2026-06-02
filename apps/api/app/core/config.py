@@ -169,6 +169,11 @@ class Settings(BaseSettings):
         }.get(agent, "")
         return per_agent or self.anthropic_model
 
+    # ---- Admin ---------------------------------------------------------------
+    # Secret for the /v1/admin/* endpoints. Must be set to a non-empty value
+    # to enable admin access. Leave blank in shared / untrusted environments.
+    admin_secret: str | None = None
+
     @property
     def is_dev_auth_allowed(self) -> bool:
         return self.environment == "development" and self.auth_provider == "dev"

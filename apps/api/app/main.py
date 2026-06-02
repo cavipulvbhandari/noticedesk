@@ -23,6 +23,7 @@ from app.core.config import get_settings  # noqa: E402
 from app.core.errors import install_error_handlers  # noqa: E402
 from app.core.logging import configure_logging  # noqa: E402
 from app.routes import (  # noqa: E402
+    admin,
     clients,
     demo,
     documents,
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
 
     install_error_handlers(app)
 
+    app.include_router(admin.router, prefix="/v1")
     app.include_router(health.router, prefix="/v1")
     app.include_router(session.router, prefix="/v1")
     app.include_router(documents.router, prefix="/v1")
