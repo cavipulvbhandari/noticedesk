@@ -55,6 +55,27 @@ _DATE_FIELDS: Final[tuple[str, ...]] = (
     "issue_date", "receipt_date", "due_date", "hearing_date",
 )
 
+# Fields the ingest Review UI renders a per-field confidence chip for. Kept in
+# sync with the extraction schema in prompts/document_parsing_v2.md. hearing_date
+# is intentionally omitted — the Review screen doesn't surface it as an editable
+# field, so it needs no chip.
+_CONFIDENCE_FIELDS: Final[tuple[str, ...]] = (
+    "document_type",
+    "law",
+    "client_name_on_document",
+    "pans_extracted",
+    "gstins_extracted",
+    "notice_number",
+    "din_or_rfn",
+    "issue_date",
+    "receipt_date",
+    "due_date",
+    "financial_year",
+    "assessment_year",
+    "authority",
+    "demand_amount",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ParsedDocument:
@@ -198,7 +219,51 @@ def _sanitize(raw: dict[str, Any]) -> dict[str, Any]:
             deduped.append(f)
     out["fields_needing_review"] = deduped
 
+    # Per-field confidence for the Review UI. Computed last so it can honour the
+    # final (deduped) review list and the clamped document-level confidence.
+    out["field_confidences"] = _clean_field_confidences(
+        raw.get("field_confidences"), deduped, out["parse_confidence"]
+    )
+
     return out
+
+
+def _clean_field_confidences(
+    raw: Any, review: list[str], parse_confidence: float
+) -> dict[str, float]:
+    """Per-field confidence scores for the ingest Review UI.
+
+    The v2 parsing prompt asks the model for a ``field_confidences`` map. We
+    never trust it blindly:
+
+      - only the canonical extractable fields are kept (anything else the model
+        invents is dropped);
+      - each value is coerced to a float in ``[0.0, 1.0]``;
+      - a field flagged in ``fields_needing_review`` (bad date, dropped
+        identifier, unknown type) is forced to ``0.0`` regardless of what the
+        model claimed — a field we couldn't trust must not read as confident;
+      - a field the model didn't score (or scored out of range) falls back to
+        the document-level ``parse_confidence`` so the UI always has a number
+        to render a chip from.
+
+    The result always contains every key in ``_CONFIDENCE_FIELDS``.
+    """
+    provided = raw if isinstance(raw, dict) else {}
+    review_set = set(review)
+    result: dict[str, float] = {}
+    for field in _CONFIDENCE_FIELDS:
+        if field in review_set:
+            result[field] = 0.0
+            continue
+        value = provided.get(field)
+        # bool is a subclass of int — reject True/False masquerading as a score.
+        if not isinstance(value, bool) and isinstance(value, (int, float)) and (
+            0.0 <= float(value) <= 1.0
+        ):
+            result[field] = float(value)
+        else:
+            result[field] = parse_confidence
+    return result
 
 
 def _clean_str(value: Any) -> str | None:

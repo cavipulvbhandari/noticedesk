@@ -88,5 +88,66 @@ def test_clamps_confidence():
     assert "parse_confidence" in out["fields_needing_review"]
 
 
+def test_field_confidences_always_present_for_every_canonical_field():
+    from app.agents.document_parsing import _CONFIDENCE_FIELDS
+
+    out = _sanitize({"document_type": "ASMT-10", "parse_confidence": 0.8})
+    assert set(out["field_confidences"]) == set(_CONFIDENCE_FIELDS)
+    # No model-supplied scores → every field falls back to parse_confidence.
+    assert all(v == 0.8 for v in out["field_confidences"].values())
+
+
+def test_field_confidences_honour_valid_model_scores():
+    out = _sanitize({
+        "document_type": "ASMT-10",
+        "parse_confidence": 0.9,
+        "field_confidences": {
+            "demand_amount": 0.62,
+            "authority": 0.55,
+        },
+    })
+    assert out["field_confidences"]["demand_amount"] == 0.62
+    assert out["field_confidences"]["authority"] == 0.55
+    # Unscored fields still fall back to the document-level confidence.
+    assert out["field_confidences"]["document_type"] == 0.9
+
+
+def test_field_confidences_forced_low_for_review_fields():
+    out = _sanitize({
+        "document_type": "ASMT-10",
+        "parse_confidence": 0.95,
+        "due_date": "not a date",           # → flagged for review
+        "field_confidences": {"due_date": 0.99},  # model over-claims
+    })
+    assert "due_date" in out["fields_needing_review"]
+    # A field we couldn't trust must never read as confident.
+    assert out["field_confidences"]["due_date"] == 0.0
+
+
+def test_field_confidences_reject_out_of_range_and_bools():
+    out = _sanitize({
+        "document_type": "ASMT-10",
+        "parse_confidence": 0.7,
+        "field_confidences": {
+            "demand_amount": 4.2,      # > 1.0 → rejected
+            "authority": True,         # bool → rejected
+            "notice_number": "0.9",    # string → rejected
+        },
+    })
+    fc = out["field_confidences"]
+    assert fc["demand_amount"] == 0.7
+    assert fc["authority"] == 0.7
+    assert fc["notice_number"] == 0.7
+
+
+def test_field_confidences_ignore_unknown_keys():
+    out = _sanitize({
+        "document_type": "ASMT-10",
+        "parse_confidence": 0.5,
+        "field_confidences": {"totally_made_up": 0.9},
+    })
+    assert "totally_made_up" not in out["field_confidences"]
+
+
 def null_str():
     return None

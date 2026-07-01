@@ -148,7 +148,7 @@ class Settings(BaseSettings):
     llm_model_parsing: str = "claude-sonnet-4-6"
 
     # Agents
-    document_parsing_prompt_version: str = "v1"
+    document_parsing_prompt_version: str = "v2"
     document_parsing_max_tokens: int = 4096
     document_parsing_temperature: float = 0.0
 
