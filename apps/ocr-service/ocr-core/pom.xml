@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>in.noticedesk</groupId>
+    <artifactId>ocr-service</artifactId>
+    <version>0.1.0</version>
+  </parent>
+
+  <artifactId>ocr-core</artifactId>
+  <name>NoticeDesk OCR Core</name>
+  <description>
+    Framework-free OCR engine: rasterize a document to page images and run
+    Tesseract over them. No Spring, no HTTP — embeddable in any JVM app.
+  </description>
+
+  <dependencies>
+    <!-- PDF rasterization (pure Java; no native poppler needed). -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+    </dependency>
+
+    <!-- Tesseract JNA binding. The Tesseract *native* library must be present
+         on the host (see ocr-server/Dockerfile); tess4j only wraps it. -->
+    <dependency>
+      <groupId>net.sourceforge.tess4j</groupId>
+      <artifactId>tess4j</artifactId>
+    </dependency>
+
+    <!-- Tests -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

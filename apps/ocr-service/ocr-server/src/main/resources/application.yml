@@ -1,0 +1,43 @@
+server:
+  port: ${OCR_SERVER_PORT:8080}
+  # Fail fast on slow clients rather than tying up a worker indefinitely.
+  tomcat:
+    connection-timeout: 30s
+
+spring:
+  application:
+    name: noticedesk-ocr
+  servlet:
+    multipart:
+      # Notice PDFs are capped at 50 MB upstream (max_upload_bytes in the API);
+      # mirror that here so we reject oversized uploads with a clean 413.
+      max-file-size: ${OCR_MAX_UPLOAD:50MB}
+      max-request-size: ${OCR_MAX_UPLOAD:50MB}
+
+# --- OCR engine (bound to OcrProperties) ----------------------------------
+ocr:
+  # Path to the parent of the tessdata dir. Left empty here so the container's
+  # TESSDATA_PREFIX env var (set in the Dockerfile) takes effect.
+  data-path: ${TESSDATA_PREFIX:}
+  default-languages: ${OCR_LANGUAGES:eng}
+  dpi: ${OCR_DPI:300}
+  page-seg-mode: ${OCR_PSM:3}      # 3 = fully automatic page segmentation
+  ocr-engine-mode: ${OCR_OEM:1}    # 1 = LSTM only
+  pool-size: ${OCR_POOL_SIZE:0}    # 0 -> one native worker per CPU
+  borrow-timeout-millis: ${OCR_BORROW_TIMEOUT_MS:30000}
+  max-pdf-pages: ${OCR_MAX_PDF_PAGES:500}
+
+# --- Observability --------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    in.noticedesk.ocr: ${OCR_LOG_LEVEL:INFO}

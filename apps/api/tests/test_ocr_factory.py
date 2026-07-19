@@ -15,7 +15,28 @@ from app.services.ocr.stub import StubOCRProvider
 
 
 def test_known_providers() -> None:
-    assert KNOWN_PROVIDERS == frozenset({"google_doc_ai", "azure_doc_intel", "stub"})
+    assert KNOWN_PROVIDERS == frozenset(
+        {"google_doc_ai", "azure_doc_intel", "self_hosted", "stub"}
+    )
+
+
+def test_self_hosted_requires_url() -> None:
+    get_ocr_provider.cache_clear()
+    from app.core.config import get_settings
+    from app.services.ocr.base import OCRError
+
+    get_settings.cache_clear()
+    import os
+
+    prev = os.environ.pop("SELF_HOSTED_OCR_URL", None)
+    try:
+        with pytest.raises(OCRError):
+            get_ocr_provider("self_hosted")
+    finally:
+        if prev is not None:
+            os.environ["SELF_HOSTED_OCR_URL"] = prev
+        get_settings.cache_clear()
+        get_ocr_provider.cache_clear()
 
 
 def test_stub_factory_returns_stub() -> None:

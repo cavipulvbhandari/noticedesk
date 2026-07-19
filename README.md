@@ -6,8 +6,9 @@ Litigation-first tax operating system for Indian CA firms. Sprint 1: foundation 
 
 ```
 /apps
-  /web        Next.js 14 App Router frontend
-  /api        FastAPI backend (Python 3.11+)
+  /web         Next.js 14 App Router frontend
+  /api         FastAPI backend (Python 3.11+)
+  /ocr-service Self-hosted Tesseract OCR microservice (Java 21, Spring Boot)
 /packages
   /db         PostgreSQL migrations and schema
   /shared     TypeScript types shared between web and api

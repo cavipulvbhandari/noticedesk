@@ -1,4 +1,4 @@
-.PHONY: db-test db-reset api-test web-test ci-local fmt lint typecheck demo-prep demo-anthropic demo-stub
+.PHONY: db-test db-reset api-test web-test ocr-test ocr-build ci-local fmt lint typecheck demo-prep demo-anthropic demo-stub
 
 DATABASE_URL ?= postgres://noticedesk:noticedesk@localhost:5432/noticedesk_test
 # Dev DB (the API connects here). For local Mac dev created via
@@ -24,7 +24,16 @@ api-test:
 web-test:
 	cd apps/web && npm run typecheck && npm run lint && npm run build
 
-ci-local: db-test api-test web-test
+# Self-hosted OCR service (Java). Tests are hermetic — PDF rasterization is
+# pure-Java and Tesseract is mocked — so no native binary is required here.
+ocr-test:
+	cd apps/ocr-service && mvn -B verify
+
+# Build the deployable OCR container (bundles Tesseract + eng/hin data).
+ocr-build:
+	docker build -t noticedesk-ocr apps/ocr-service -f apps/ocr-service/ocr-server/Dockerfile
+
+ci-local: db-test api-test web-test ocr-test
 
 fmt:
 	cd apps/api && ruff format . || true

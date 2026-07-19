@@ -13,9 +13,12 @@ from app.core.config import get_settings
 from app.services.ocr.azure_document_intelligence import AzureDocumentIntelligenceProvider
 from app.services.ocr.base import OCRError, OCRProvider
 from app.services.ocr.google_document_ai import GoogleDocumentAIProvider
+from app.services.ocr.self_hosted import SelfHostedOCRProvider
 from app.services.ocr.stub import StubOCRProvider
 
-KNOWN_PROVIDERS: frozenset[str] = frozenset({"google_doc_ai", "azure_doc_intel", "stub"})
+KNOWN_PROVIDERS: frozenset[str] = frozenset(
+    {"google_doc_ai", "azure_doc_intel", "self_hosted", "stub"}
+)
 
 
 def _build_google() -> OCRProvider:
@@ -49,6 +52,20 @@ def _build_azure() -> OCRProvider:
     )
 
 
+def _build_self_hosted() -> OCRProvider:
+    s = get_settings()
+    if not s.self_hosted_ocr_url:
+        raise OCRError(
+            "SELF_HOSTED_OCR_URL must be set for self_hosted (e.g. "
+            "http://ocr-service:8080)"
+        )
+    return SelfHostedOCRProvider(
+        base_url=s.self_hosted_ocr_url,
+        timeout_seconds=s.self_hosted_ocr_timeout_seconds,
+        languages=s.self_hosted_ocr_languages,
+    )
+
+
 def _build_stub() -> OCRProvider:
     return StubOCRProvider()
 
@@ -56,6 +73,7 @@ def _build_stub() -> OCRProvider:
 _BUILDERS: dict[str, Callable[[], OCRProvider]] = {
     "google_doc_ai": _build_google,
     "azure_doc_intel": _build_azure,
+    "self_hosted": _build_self_hosted,
     "stub": _build_stub,
 }
 

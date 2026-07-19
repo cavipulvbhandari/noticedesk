@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     azure_doc_intel_endpoint: str | None = None
     azure_doc_intel_api_key: str | None = None
 
+    # Self-hosted OCR microservice (apps/ocr-service). No third-party vendor:
+    # Tesseract behind our own HTTP service. Set OCR_PROVIDER_PRIMARY=self_hosted
+    # to route the pipeline here.
+    self_hosted_ocr_url: str | None = None
+    self_hosted_ocr_timeout_seconds: float = 60.0
+    self_hosted_ocr_languages: str = "eng"
+
     # ---- Sprint 2: workflows ------------------------------------------------
     workflow_backend: WorkflowBackend = "inline"
     temporal_host: str = "localhost:7233"
