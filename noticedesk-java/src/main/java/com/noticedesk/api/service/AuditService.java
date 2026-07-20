@@ -44,11 +44,13 @@ public class AuditService {
             jdbc.update("""
                 INSERT INTO audit_logs (
                     tenant_id, user_id, action_type, entity_type, entity_id,
-                    before_state, after_state, ip_address, user_agent, risk_tier
+                    before_state, after_state, risk_tier
                 ) VALUES (
-                    :tenant_id, :user_id, :action_type, :entity_type, :entity_id,
+                    CAST(:tenant_id AS UUID), CAST(:user_id AS UUID),
+                    :action_type, :entity_type,
+                    CAST(:entity_id AS UUID),
                     CAST(:before_state AS JSONB), CAST(:after_state AS JSONB),
-                    CAST(:ip_address AS INET), :user_agent, :risk_tier
+                    :risk_tier
                 )
                 """, params);
         } catch (Exception e) {

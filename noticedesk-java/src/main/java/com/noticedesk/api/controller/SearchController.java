@@ -29,8 +29,8 @@ public class SearchController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         if (q == null || q.isBlank()) {
             throw new AppValidationException("Search query 'q' is required");

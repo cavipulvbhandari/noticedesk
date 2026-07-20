@@ -46,8 +46,8 @@ public class DraftController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Find matter_id from notice
         var noticeRows = jdbc.queryForList(
@@ -93,8 +93,8 @@ public class DraftController {
     public List<Map<String, Object>> listDrafts(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         List<Map<String, Object>> drafts = jdbc.queryForList(
                 """
@@ -117,8 +117,8 @@ public class DraftController {
     public Map<String, Object> getDraft(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var draftRows = jdbc.queryForList(
                 """
@@ -162,8 +162,8 @@ public class DraftController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         if (request.sectionNum() == null) {
             throw new AppValidationException("sectionNum is required");
@@ -272,8 +272,8 @@ public class DraftController {
     public ResponseEntity<byte[]> exportDraft(@PathVariable UUID id) throws Exception {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Load draft + matter + notice + client + registration + tenant info
         var draftRows = jdbc.queryForList(

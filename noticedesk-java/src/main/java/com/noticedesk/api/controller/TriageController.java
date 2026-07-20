@@ -38,8 +38,8 @@ public class TriageController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Load notice context
         var noticeRows = jdbc.queryForList(
@@ -134,8 +134,8 @@ public class TriageController {
     public Map<String, Object> getTriage(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var triageRows = jdbc.queryForList(
                 """
@@ -177,8 +177,8 @@ public class TriageController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Validate requirement exists for this notice
         var reqRows = jdbc.queryForList(
@@ -222,8 +222,8 @@ public class TriageController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var reqRows = jdbc.queryForList(
                 "SELECT requirement_id FROM notice_document_requirements WHERE requirement_id = :rid AND notice_id = :nid",

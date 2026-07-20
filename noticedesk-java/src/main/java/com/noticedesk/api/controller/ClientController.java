@@ -42,8 +42,8 @@ public class ClientController {
     public List<Map<String, Object>> listClients() {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         List<Map<String, Object>> rows = jdbc.queryForList(
                 """
@@ -78,6 +78,13 @@ public class ClientController {
 
         return rows.stream()
                 .map(HashMap::new)
+                .peek(m -> {
+                    Object arr = m.get("gst_state_codes");
+                    if (arr instanceof java.sql.Array) {
+                        try { m.put("gst_state_codes", ((java.sql.Array) arr).getArray()); }
+                        catch (Exception e) { m.put("gst_state_codes", new Object[0]); }
+                    }
+                })
                 .map(m -> (Map<String, Object>) m)
                 .toList();
     }
@@ -87,8 +94,8 @@ public class ClientController {
     public Map<String, Object> getClient(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var clientRows = jdbc.queryForList(
                 """
@@ -129,8 +136,8 @@ public class ClientController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify client exists
         var existing = jdbc.queryForList(
@@ -181,8 +188,8 @@ public class ClientController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // RBAC: partner or managing_partner only
         String role = jdbc.queryForObject(

@@ -95,7 +95,7 @@ public class ParseAndRouteWorkflow {
 
     @Transactional
     public Map<String, Object> fetchInboxRow(String tenantId, UUID inboxId) {
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId), String.class);
         List<Map<String, Object>> rows = jdbc.queryForList(
                 """
                 SELECT ocr_status, ocr_text, ocr_provider_used, page_count,
@@ -108,14 +108,14 @@ public class ParseAndRouteWorkflow {
 
     @Transactional
     public void markParseInProgress(String tenantId, UUID inboxId) {
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId), String.class);
         jdbc.update("UPDATE documents_inbox SET parse_status = 'in_progress' WHERE inbox_id = CAST(:id AS UUID)",
                 Map.of("id", inboxId.toString()));
     }
 
     @Transactional
     public void markParseFailed(String tenantId, UUID inboxId, String error) {
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId), String.class);
         jdbc.update("UPDATE documents_inbox SET parse_status = 'failed' WHERE inbox_id = CAST(:id AS UUID)",
                 Map.of("id", inboxId.toString()));
         auditService.emit(tenantId, null, "document.parsing.failed",
@@ -126,7 +126,7 @@ public class ParseAndRouteWorkflow {
     public void persistParsedAndRoute(String tenantId, UUID inboxId,
                                       DocumentParsingAgent.ParsedDocument parsed,
                                       String ingestChannel) {
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)", Map.of("tid", tenantId), String.class);
         try {
             String parsedJson = objectMapper.writeValueAsString(parsed.payload());
             jdbc.update("""

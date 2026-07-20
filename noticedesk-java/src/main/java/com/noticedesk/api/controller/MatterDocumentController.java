@@ -45,8 +45,8 @@ public class MatterDocumentController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify matter exists
         var matterRows = jdbc.queryForList(
@@ -118,8 +118,8 @@ public class MatterDocumentController {
     public List<Map<String, Object>> listDocuments(@PathVariable UUID matter_id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify matter exists
         var matterRows = jdbc.queryForList(

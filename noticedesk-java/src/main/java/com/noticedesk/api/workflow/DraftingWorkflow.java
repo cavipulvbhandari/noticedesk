@@ -62,8 +62,8 @@ public class DraftingWorkflow {
                 job.matterId(), job.noticeId(), job.tenantId());
 
         // 1. Bind RLS
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", job.tenantId().toString()));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", job.tenantId().toString()), String.class);
 
         // 2. Load drafting context
         DraftingInput input = draftingAgent.loadDraftingInput(

@@ -36,8 +36,8 @@ public class RegistrationController {
     public List<Map<String, Object>> getNoticesForRegistration(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify registration exists
         var regRows = jdbc.queryForList(
@@ -72,8 +72,8 @@ public class RegistrationController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var existing = jdbc.queryForList(
                 """

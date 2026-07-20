@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnknown(Exception ex) {
         log.error("unhandled_exception: {}", ex.getMessage(), ex);
         Map<String, Object> details = isDev()
-                ? Map.of("error", ex.getMessage(), "type", ex.getClass().getSimpleName())
+                ? Map.of("error", String.valueOf(ex.getMessage()), "type", ex.getClass().getSimpleName())
                 : Map.of();
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)

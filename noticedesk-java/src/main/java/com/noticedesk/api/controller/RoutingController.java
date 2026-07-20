@@ -36,8 +36,8 @@ public class RoutingController {
     public Map<String, Object> getParsedInbox(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var rows = jdbc.queryForList(
                 """
@@ -62,8 +62,8 @@ public class RoutingController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify inbox item exists
         var rows = jdbc.queryForList(
@@ -97,8 +97,8 @@ public class RoutingController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var rows = jdbc.queryForList(
                 "SELECT inbox_id FROM documents_inbox WHERE inbox_id = :id",
@@ -125,8 +125,8 @@ public class RoutingController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         if (request.pan() == null || !PAN_PATTERN.matcher(request.pan().toUpperCase()).matches()) {
             throw new AppValidationException("Invalid PAN format. Expected pattern: ABCDE1234F");
@@ -137,7 +137,7 @@ public class RoutingController {
         UUID clientId = jdbc.queryForObject(
                 """
                 INSERT INTO clients (tenant_id, pan, legal_name, trade_name, entity_type, industry, email, phone)
-                VALUES (:tid, :pan, :legal, :trade, :entity, :industry, :email, :phone)
+                VALUES (CAST(:tid AS UUID), :pan, :legal, :trade, :entity, :industry, :email, :phone)
                 RETURNING client_id
                 """,
                 Map.of(
@@ -151,12 +151,13 @@ public class RoutingController {
                         "phone", request.phone() != null ? request.phone() : ""),
                 UUID.class);
 
+        String legalName = request.legalName() != null ? request.legalName() : "";
         auditService.emit(tenantId, userId, "client.created", "clients", clientId.toString(),
-                null, Map.of("pan", pan, "legal_name", request.legalName()), 1);
+                null, Map.of("pan", pan, "legal_name", legalName), 1);
 
         log.info("Client created: client_id={} pan={} tenant={}", clientId, pan, tenantId);
 
-        return Map.of("client_id", clientId, "pan", pan, "legal_name", request.legalName());
+        return Map.of("client_id", clientId, "pan", pan, "legal_name", legalName);
     }
 
     @PostMapping("/clients/{id}/registrations")
@@ -169,8 +170,8 @@ public class RoutingController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify client exists
         var clientRows = jdbc.queryForList(

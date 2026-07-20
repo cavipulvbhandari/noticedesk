@@ -61,8 +61,8 @@ public class NoticeController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         Map<String, Object> params = new HashMap<>();
         params.put("limit", page_size);
@@ -131,8 +131,8 @@ public class NoticeController {
     public Map<String, Object> statusCounts() {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         List<Map<String, Object>> rows = jdbc.queryForList(
                 """
@@ -166,8 +166,8 @@ public class NoticeController {
     public List<Map<String, Object>> dashboardToday() {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         LocalDate horizon = LocalDate.now().plusDays(7);
 
@@ -198,8 +198,8 @@ public class NoticeController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         if (request.clientId() == null) {
             throw new AppValidationException("clientId is required");
@@ -271,8 +271,8 @@ public class NoticeController {
     public Map<String, Object> getNotice(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var rows = jdbc.queryForList(
                 """
@@ -310,8 +310,8 @@ public class NoticeController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var existing = jdbc.queryForList(
                 "SELECT notice_id FROM notices WHERE notice_id = :nid",
@@ -359,8 +359,8 @@ public class NoticeController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         if (request.targetStatus() == null || !ALL_STATUSES.contains(request.targetStatus())) {
             throw new AppValidationException(
@@ -415,8 +415,8 @@ public class NoticeController {
     public List<Map<String, Object>> getTimeline(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Verify notice exists
         var noticeRows = jdbc.queryForList(

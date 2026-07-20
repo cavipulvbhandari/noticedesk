@@ -43,8 +43,8 @@ public class EmailController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         // Validate HMAC signature
         String secret = properties.getEmail() != null ? properties.getEmail().getInboundWebhookSecret() : null;

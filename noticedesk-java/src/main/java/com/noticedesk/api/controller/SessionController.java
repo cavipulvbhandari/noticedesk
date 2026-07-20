@@ -27,8 +27,8 @@ public class SessionController {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var rows = jdbc.queryForList(
                 "SELECT user_id, name, email, role, created_at FROM users WHERE user_id = :uid",

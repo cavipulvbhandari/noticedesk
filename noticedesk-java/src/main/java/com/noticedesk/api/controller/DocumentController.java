@@ -36,8 +36,8 @@ public class DocumentController {
     public Map<String, Object> uploadDocument(@RequestParam("file") MultipartFile file) throws Exception {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         long maxBytes = properties.getStorage().getMaxUploadBytes();
         if (file.getSize() > maxBytes) {
@@ -104,8 +104,8 @@ public class DocumentController {
 
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         int offset = (page - 1) * page_size;
 
@@ -130,8 +130,8 @@ public class DocumentController {
     public Map<String, Object> getInboxOcr(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();
 
-        jdbc.update("SELECT set_config('app.current_tenant', :tid, true)",
-                Map.of("tid", tenantId));
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
 
         var rows = jdbc.queryForList(
                 """
