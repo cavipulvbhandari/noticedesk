@@ -42,7 +42,9 @@ public class DraftController {
     @PostMapping("/notices/{id}/draft")
     @ResponseStatus(HttpStatus.CREATED)
     @Transactional
-    public Map<String, Object> generateDraft(@PathVariable UUID id) {
+    public Map<String, Object> generateDraft(
+            @PathVariable UUID id,
+            @RequestBody(required = false) GenerateDraftRequest request) {
         String tenantId = TenantContextHolder.getTenantId();
         String userId = TenantContextHolder.getUserId();
 
@@ -65,6 +67,11 @@ public class DraftController {
         job.put("matter_id", matterId.toString());
         job.put("tenant_id", tenantId);
         job.put("user_id", userId);
+        if (request != null) {
+            if (request.tone() != null) job.put("tone", request.tone());
+            if (request.partnerInstructions() != null) job.put("partner_instructions", request.partnerInstructions());
+            job.put("include_cross_registration", Boolean.TRUE.equals(request.includeCrossRegistration()));
+        }
 
         // Commit read transaction context, then call workflow
         Map<String, Object> result = workflowDispatcher.dispatchGenerateDraft(job);
@@ -269,7 +276,9 @@ public class DraftController {
 
     @GetMapping("/drafts/{id}/export")
     @Transactional
-    public ResponseEntity<byte[]> exportDraft(@PathVariable UUID id) throws Exception {
+    public ResponseEntity<byte[]> exportDraft(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "reply") String mode) throws Exception {
         String tenantId = TenantContextHolder.getTenantId();
 
         jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
@@ -333,7 +342,8 @@ public class DraftController {
                 (String) context.get("authority"),
                 context.get("due_date") != null ? context.get("due_date").toString() : null
         );
-        byte[] docxBytes = docxExportService.renderDraftDocx("reply", cover, sections, internalNote);
+        String exportMode = List.of("filing", "client", "internal").contains(mode) ? mode : "reply";
+        byte[] docxBytes = docxExportService.renderDraftDocx(exportMode, cover, sections, internalNote);
 
         String filename = String.format("draft_%s_v%s.docx", id, draft.get("version"));
 
@@ -360,4 +370,6 @@ public class DraftController {
     // ---- Request records ----
 
     public record EditSectionRequest(Integer sectionNum, String bodyHtml, String note) {}
+
+    public record GenerateDraftRequest(String tone, String partnerInstructions, Boolean includeCrossRegistration) {}
 }

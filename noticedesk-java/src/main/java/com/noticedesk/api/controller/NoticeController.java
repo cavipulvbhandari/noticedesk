@@ -119,9 +119,10 @@ public class NoticeController {
                 params);
 
         return Map.of(
-                "items", items,
+                "notices", items,
                 "page", page,
-                "page_size", page_size);
+                "page_size", page_size,
+                "total", items.size());
     }
 
     // ---- GET /v1/dashboard/status_counts ----
@@ -163,13 +164,14 @@ public class NoticeController {
 
     @GetMapping("/dashboard/today")
     @Transactional
-    public List<Map<String, Object>> dashboardToday() {
+    public Map<String, Object> dashboardToday() {
         String tenantId = TenantContextHolder.getTenantId();
 
         jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
                 Map.of("tid", tenantId), String.class);
 
-        LocalDate horizon = LocalDate.now().plusDays(7);
+        LocalDate today = LocalDate.now();
+        LocalDate horizon = today.plusDays(7);
 
         List<Map<String, Object>> items = jdbc.queryForList(
                 """
@@ -186,7 +188,12 @@ public class NoticeController {
                 """,
                 Map.of("horizon", horizon));
 
-        return items.stream().map(HashMap::new).map(m -> (Map<String, Object>) m).toList();
+        List<Map<String, Object>> notices = items.stream().map(HashMap::new).map(m -> (Map<String, Object>) m).toList();
+        return Map.of(
+                "today", today.toString(),
+                "horizon", horizon.toString(),
+                "notices", notices,
+                "total", notices.size());
     }
 
     // ---- POST /v1/notices ----

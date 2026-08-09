@@ -139,4 +139,84 @@ public class MatterDocumentController {
 
         return documents.stream().map(HashMap::new).map(m -> (Map<String, Object>) m).toList();
     }
+
+    // ---- PATCH /v1/documents/{id} ----
+
+    @PatchMapping("/documents/{id}")
+    @Transactional
+    public Map<String, Object> updateDocument(
+            @PathVariable UUID id,
+            @RequestBody Map<String, Object> body) {
+
+        String tenantId = TenantContextHolder.getTenantId();
+        String userId = TenantContextHolder.getUserId();
+
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
+
+        var docRows = jdbc.queryForList(
+                "SELECT document_id FROM documents WHERE document_id = :did AND deleted_at IS NULL",
+                Map.of("did", id));
+        if (docRows.isEmpty()) {
+            throw new NotFoundException("Document not found: " + id);
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("did", id);
+        List<String> setClauses = new java.util.ArrayList<>();
+
+        if (body.containsKey("document_type")) {
+            setClauses.add("document_type = :document_type");
+            params.put("document_type", body.get("document_type"));
+        }
+        if (body.containsKey("lifecycle_stage")) {
+            setClauses.add("lifecycle_stage = :lifecycle_stage");
+            params.put("lifecycle_stage", body.get("lifecycle_stage"));
+        }
+
+        if (setClauses.isEmpty()) {
+            throw new AppValidationException("No valid fields to update");
+        }
+
+        jdbc.update("UPDATE documents SET " + String.join(", ", setClauses) + " WHERE document_id = :did", params);
+
+        auditService.emit(tenantId, userId, "document.updated", "documents", id.toString(),
+                null, body, 1);
+
+        log.info("Document updated: doc_id={} tenant={}", id, tenantId);
+
+        var updated = jdbc.queryForList(
+                "SELECT document_id, filename, document_type, lifecycle_stage FROM documents WHERE document_id = :did",
+                Map.of("did", id));
+        return new HashMap<>(updated.get(0));
+    }
+
+    // ---- DELETE /v1/documents/{id} ----
+
+    @DeleteMapping("/documents/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void deleteDocument(@PathVariable UUID id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        String userId = TenantContextHolder.getUserId();
+
+        jdbc.queryForObject("SELECT set_config('app.current_tenant', :tid, true)",
+                Map.of("tid", tenantId), String.class);
+
+        var docRows = jdbc.queryForList(
+                "SELECT document_id FROM documents WHERE document_id = :did AND deleted_at IS NULL",
+                Map.of("did", id));
+        if (docRows.isEmpty()) {
+            throw new NotFoundException("Document not found: " + id);
+        }
+
+        jdbc.update(
+                "UPDATE documents SET deleted_at = NOW() WHERE document_id = :did",
+                Map.of("did", id));
+
+        auditService.emit(tenantId, userId, "document.deleted", "documents", id.toString(),
+                null, Map.of(), 1);
+
+        log.info("Document soft-deleted: doc_id={} tenant={}", id, tenantId);
+    }
 }

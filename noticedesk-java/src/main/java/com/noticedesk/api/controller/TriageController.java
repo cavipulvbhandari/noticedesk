@@ -145,7 +145,7 @@ public class TriageController {
                 Map.of("nid", id));
 
         if (triageRows.isEmpty()) {
-            throw new NotFoundException("Triage not found for notice: " + id);
+            return Map.of("status", "not_started", "checklist", List.of());
         }
 
         Map<String, Object> triage = new HashMap<>(triageRows.get(0));

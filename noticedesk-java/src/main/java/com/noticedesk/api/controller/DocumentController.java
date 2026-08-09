@@ -96,7 +96,7 @@ public class DocumentController {
                 "status", "ocr_complete");
     }
 
-    @GetMapping("/inbox")
+    @GetMapping({"/inbox", "/documents/inbox"})
     @Transactional
     public Map<String, Object> listInbox(
             @RequestParam(defaultValue = "1") int page,
@@ -125,7 +125,7 @@ public class DocumentController {
                 "page_size", page_size);
     }
 
-    @GetMapping("/inbox/{id}/ocr")
+    @GetMapping({"/inbox/{id}/ocr", "/documents/inbox/{id}/ocr"})
     @Transactional
     public Map<String, Object> getInboxOcr(@PathVariable UUID id) {
         String tenantId = TenantContextHolder.getTenantId();

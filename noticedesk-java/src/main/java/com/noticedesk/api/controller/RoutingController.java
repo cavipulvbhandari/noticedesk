@@ -133,6 +133,17 @@ public class RoutingController {
         }
 
         String pan = request.pan().toUpperCase();
+        String legalName = request.legalName() != null ? request.legalName() : "";
+
+        // Idempotent: return existing client if PAN already exists for this tenant
+        var existing = jdbc.queryForList(
+                "SELECT client_id FROM clients WHERE tenant_id = CAST(:tid AS UUID) AND pan = :pan AND deleted_at IS NULL",
+                Map.of("tid", tenantId, "pan", pan));
+        if (!existing.isEmpty()) {
+            UUID existingId = (UUID) existing.get(0).get("client_id");
+            log.info("Client already exists for PAN={} tenant={} client_id={}", pan, tenantId, existingId);
+            return Map.of("client_id", existingId, "pan", pan, "legal_name", legalName, "created", false);
+        }
 
         UUID clientId = jdbc.queryForObject(
                 """
@@ -143,7 +154,7 @@ public class RoutingController {
                 Map.of(
                         "tid", tenantId,
                         "pan", pan,
-                        "legal", request.legalName() != null ? request.legalName() : "",
+                        "legal", legalName,
                         "trade", request.tradeName() != null ? request.tradeName() : "",
                         "entity", request.entityType() != null ? request.entityType() : "",
                         "industry", request.industry() != null ? request.industry() : "",
@@ -151,13 +162,20 @@ public class RoutingController {
                         "phone", request.phone() != null ? request.phone() : ""),
                 UUID.class);
 
-        String legalName = request.legalName() != null ? request.legalName() : "";
+        // Auto-create IT registration for the new client
+        jdbc.update(
+                """
+                INSERT INTO client_registrations (tenant_id, client_id, registration_type, identifier_value)
+                VALUES (CAST(:tid AS UUID), :cid, 'IT', :pan)
+                """,
+                Map.of("tid", tenantId, "cid", clientId, "pan", pan));
+
         auditService.emit(tenantId, userId, "client.created", "clients", clientId.toString(),
                 null, Map.of("pan", pan, "legal_name", legalName), 1);
 
         log.info("Client created: client_id={} pan={} tenant={}", clientId, pan, tenantId);
 
-        return Map.of("client_id", clientId, "pan", pan, "legal_name", legalName);
+        return Map.of("client_id", clientId, "pan", pan, "legal_name", legalName, "created", true);
     }
 
     @PostMapping("/clients/{id}/registrations")
