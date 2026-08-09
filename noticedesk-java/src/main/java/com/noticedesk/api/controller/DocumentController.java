@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.security.MessageDigest;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +50,7 @@ public class DocumentController {
         String key = UUID.randomUUID().toString();
         String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
         byte[] bytes = file.getBytes();
+        String fileHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
 
         storageFactory.getStorage().store(bytes, key, contentType);
 
@@ -55,8 +58,9 @@ public class DocumentController {
 
         UUID inboxId = jdbc.queryForObject(
                 """
-                INSERT INTO documents_inbox (tenant_id, filename, storage_key, file_size, mime_type, ingest_channel, status)
-                VALUES (:tid, :filename, :key, :size, :mime, 'web_upload', 'pending')
+                INSERT INTO documents_inbox
+                    (tenant_id, original_filename, s3_key, file_size_bytes, file_hash, mime_type, ingest_channel)
+                VALUES (:tid, :filename, :key, :size, :hash, :mime, 'web_upload')
                 RETURNING inbox_id
                 """,
                 Map.of(
@@ -64,6 +68,7 @@ public class DocumentController {
                         "filename", filename,
                         "key", key,
                         "size", file.getSize(),
+                        "hash", fileHash,
                         "mime", contentType),
                 UUID.class);
 
@@ -78,7 +83,8 @@ public class DocumentController {
             jdbc.update(
                     """
                     UPDATE documents_inbox
-                    SET ocr_text = :text, ocr_provider = :provider, status = 'ocr_complete'
+                    SET ocr_text = :text, ocr_provider_used = :provider, ocr_status = 'completed',
+                        ocr_completed_at = NOW()
                     WHERE inbox_id = :id
                     """,
                     Map.of("text", ocrText, "provider", ocrProvider, "id", inboxId));
@@ -86,7 +92,7 @@ public class DocumentController {
         } catch (Exception e) {
             log.warn("OCR failed for inbox_id={}: {}", inboxId, e.getMessage());
             jdbc.update(
-                    "UPDATE documents_inbox SET status = 'ocr_failed' WHERE inbox_id = :id",
+                    "UPDATE documents_inbox SET ocr_status = 'failed' WHERE inbox_id = :id",
                     Map.of("id", inboxId));
         }
 
@@ -111,10 +117,11 @@ public class DocumentController {
 
         List<Map<String, Object>> items = jdbc.queryForList(
                 """
-                SELECT inbox_id, filename, mime_type, ingest_channel, status,
-                       ocr_provider, ocr_confidence, page_count, created_at
+                SELECT inbox_id, original_filename AS filename, mime_type, ingest_channel,
+                       ocr_status AS status, ocr_provider_used AS ocr_provider, page_count,
+                       uploaded_at AS created_at
                 FROM documents_inbox
-                ORDER BY created_at DESC
+                ORDER BY uploaded_at DESC
                 LIMIT :limit OFFSET :offset
                 """,
                 Map.of("limit", page_size, "offset", offset));
@@ -135,7 +142,8 @@ public class DocumentController {
 
         var rows = jdbc.queryForList(
                 """
-                SELECT inbox_id, filename, ocr_text, ocr_provider, page_count
+                SELECT inbox_id, original_filename AS filename, ocr_text,
+                       ocr_provider_used AS ocr_provider, page_count
                 FROM documents_inbox WHERE inbox_id = :id
                 """,
                 Map.of("id", id));

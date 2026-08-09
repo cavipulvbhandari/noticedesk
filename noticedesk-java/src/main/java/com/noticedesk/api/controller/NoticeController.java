@@ -102,7 +102,7 @@ public class NoticeController {
 
         String whereClause = String.join(" AND ", conditions);
 
-        List<Map<String, Object>> items = jdbc.queryForList(
+        String listSql =
                 """
                 SELECT n.notice_id, n.law, n.document_type, n.due_date, n.financial_year, n.assessment_year,
                        n.lifecycle_status, n.ingest_channel, n.din_or_rfn, n.raw_extracted_json,
@@ -112,11 +112,14 @@ public class NoticeController {
                 FROM notices n
                 JOIN clients c ON c.client_id = n.client_id
                 JOIN client_registrations r ON r.registration_id = n.registration_id
-                WHERE """ + whereClause + """
-                ORDER BY n.due_date ASC NULLS LAST, n.notice_id ASC
+                WHERE \s"""
+                + whereClause
+                + """
+                \sORDER BY n.due_date ASC NULLS LAST, n.notice_id ASC
                 LIMIT :limit OFFSET :offset
-                """,
-                params);
+                """;
+
+        List<Map<String, Object>> items = jdbc.queryForList(listSql, params);
 
         return Map.of(
                 "notices", items,

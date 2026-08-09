@@ -41,8 +41,9 @@ public class RoutingController {
 
         var rows = jdbc.queryForList(
                 """
-                SELECT inbox_id, filename, ocr_text, parsed_json, routing_status, routing_error,
-                       routed_notice_id, routed_matter_id, created_at
+                SELECT inbox_id, original_filename AS filename, ocr_text,
+                       ocr_layout_json AS parsed_json, routing_status, routing_error,
+                       parsed_to_notice_id AS routed_notice_id, uploaded_at AS created_at
                 FROM documents_inbox WHERE inbox_id = :id
                 """,
                 Map.of("id", id));
@@ -73,18 +74,17 @@ public class RoutingController {
             throw new NotFoundException("Inbox item not found: " + id);
         }
 
-        UUID matterId = body.containsKey("matter_id") ? UUID.fromString((String) body.get("matter_id")) : null;
         UUID noticeId = body.containsKey("notice_id") ? UUID.fromString((String) body.get("notice_id")) : null;
 
         jdbc.update(
                 """
                 UPDATE documents_inbox
-                SET routing_status = 'manual', routed_matter_id = :mid, routed_notice_id = :nid
+                SET routing_status = 'manual_assignment', parsed_to_notice_id = :nid
                 WHERE inbox_id = :id
                 """,
-                Map.of("id", id, "mid", matterId, "nid", noticeId));
+                Map.of("id", id, "nid", noticeId));
 
-        log.info("Inbox item manually routed: inbox_id={} matter_id={} tenant={}", id, matterId, tenantId);
+        log.info("Inbox item manually routed: inbox_id={} notice_id={} tenant={}", id, noticeId, tenantId);
 
         return Map.of("inbox_id", id, "routing_status", "manual");
     }
@@ -111,7 +111,7 @@ public class RoutingController {
 
         jdbc.update(
                 "UPDATE documents_inbox SET routing_status = 'rejected', routing_error = :reason WHERE inbox_id = :id",
-                Map.of("id", id, "reason", reason != null ? reason : ""));
+                Map.of("id", id, "reason", reason != null ? reason : "manually rejected"));
 
         log.info("Inbox item rejected: inbox_id={} tenant={}", id, tenantId);
 
@@ -145,21 +145,23 @@ public class RoutingController {
             return Map.of("client_id", existingId, "pan", pan, "legal_name", legalName, "created", false);
         }
 
+        Map<String, Object> insertParams = new HashMap<>();
+        insertParams.put("tid", tenantId);
+        insertParams.put("pan", pan);
+        insertParams.put("legal", legalName);
+        insertParams.put("trade", request.tradeName() != null ? request.tradeName() : "");
+        insertParams.put("entity", request.entityType() != null ? request.entityType() : "");
+        insertParams.put("industry", request.industry() != null ? request.industry() : "");
+        insertParams.put("email", request.email());
+        insertParams.put("phone", request.phone());
+
         UUID clientId = jdbc.queryForObject(
                 """
                 INSERT INTO clients (tenant_id, pan, legal_name, trade_name, entity_type, industry, email, phone)
                 VALUES (CAST(:tid AS UUID), :pan, :legal, :trade, :entity, :industry, :email, :phone)
                 RETURNING client_id
                 """,
-                Map.of(
-                        "tid", tenantId,
-                        "pan", pan,
-                        "legal", legalName,
-                        "trade", request.tradeName() != null ? request.tradeName() : "",
-                        "entity", request.entityType() != null ? request.entityType() : "",
-                        "industry", request.industry() != null ? request.industry() : "",
-                        "email", request.email() != null ? request.email() : "",
-                        "phone", request.phone() != null ? request.phone() : ""),
+                insertParams,
                 UUID.class);
 
         // Auto-create IT registration for the new client
