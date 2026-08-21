@@ -75,18 +75,69 @@ public class RoutingController {
         }
 
         UUID noticeId = body.containsKey("notice_id") ? UUID.fromString((String) body.get("notice_id")) : null;
+        UUID clientId = body.containsKey("client_id") ? UUID.fromString((String) body.get("client_id")) : null;
+        UUID registrationId = body.containsKey("registration_id") ? UUID.fromString((String) body.get("registration_id")) : null;
 
+        // If notice_id not supplied but client+registration are, create notice from inbox data
+        if (noticeId == null && clientId != null && registrationId != null) {
+
+            // Verify client exists
+            var clientRows = jdbc.queryForList(
+                    "SELECT client_id FROM clients WHERE client_id = :cid AND deleted_at IS NULL",
+                    Map.of("cid", clientId));
+            if (clientRows.isEmpty()) {
+                throw new NotFoundException("Client not found: " + clientId);
+            }
+
+            // Find or create matter
+            var matterRows = jdbc.queryForList(
+                    "SELECT matter_id FROM matters WHERE client_id = :cid AND registration_id = :rid AND deleted_at IS NULL LIMIT 1",
+                    Map.of("cid", clientId, "rid", registrationId));
+            UUID matterId;
+            if (!matterRows.isEmpty()) {
+                matterId = (UUID) matterRows.get(0).get("matter_id");
+            } else {
+                matterId = jdbc.queryForObject(
+                        "INSERT INTO matters (tenant_id, client_id, registration_id) VALUES (CAST(:tid AS UUID), :cid, :rid) RETURNING matter_id",
+                        Map.of("tid", tenantId, "cid", clientId, "rid", registrationId),
+                        UUID.class);
+            }
+
+            // Create notice from inbox document data
+            var inboxData = jdbc.queryForList(
+                    "SELECT ocr_text, ingest_channel FROM documents_inbox WHERE inbox_id = :id",
+                    Map.of("id", id));
+            String ingestChannel = inboxData.isEmpty() ? "manual" : (String) inboxData.get(0).get("ingest_channel");
+
+            noticeId = jdbc.queryForObject(
+                    """
+                    INSERT INTO notices
+                        (tenant_id, matter_id, client_id, registration_id, law, ingest_channel, lifecycle_status)
+                    VALUES
+                        (CAST(:tid AS UUID), :mid, :cid, :rid, 'GST', :channel, 'issued')
+                    RETURNING notice_id
+                    """,
+                    Map.of("tid", tenantId, "mid", matterId, "cid", clientId,
+                            "rid", registrationId, "channel", ingestChannel),
+                    UUID.class);
+
+            log.info("Notice auto-created during manual routing: notice_id={} matter_id={} inbox_id={}", noticeId, matterId, id);
+        }
+
+        if (noticeId == null) {
+            throw new AppValidationException("Provide either notice_id or both client_id and registration_id");
+        }
+
+        Map<String, Object> updateParams = new HashMap<>();
+        updateParams.put("id", id);
+        updateParams.put("nid", noticeId);
         jdbc.update(
-                """
-                UPDATE documents_inbox
-                SET routing_status = 'manual_assignment', parsed_to_notice_id = :nid
-                WHERE inbox_id = :id
-                """,
-                Map.of("id", id, "nid", noticeId));
+                "UPDATE documents_inbox SET routing_status = 'manual_assignment', parsed_to_notice_id = :nid WHERE inbox_id = :id",
+                updateParams);
 
         log.info("Inbox item manually routed: inbox_id={} notice_id={} tenant={}", id, noticeId, tenantId);
 
-        return Map.of("inbox_id", id, "routing_status", "manual");
+        return Map.of("inbox_id", id, "routing_status", "manual_assignment", "notice_id", noticeId);
     }
 
     @PostMapping("/inbox/{id}/reject")

@@ -102,6 +102,13 @@ public class NoticeController {
 
         String whereClause = String.join(" AND ", conditions);
 
+        String countSql = "SELECT COUNT(*)::int FROM notices n"
+                + " JOIN clients c ON c.client_id = n.client_id"
+                + " JOIN client_registrations r ON r.registration_id = n.registration_id"
+                + " WHERE " + whereClause;
+
+        Integer total = jdbc.queryForObject(countSql, params, Integer.class);
+
         String listSql =
                 """
                 SELECT n.notice_id, n.law, n.document_type, n.due_date, n.financial_year, n.assessment_year,
@@ -125,7 +132,7 @@ public class NoticeController {
                 "notices", items,
                 "page", page,
                 "page_size", page_size,
-                "total", items.size());
+                "total", total != null ? total : 0);
     }
 
     // ---- GET /v1/dashboard/status_counts ----
