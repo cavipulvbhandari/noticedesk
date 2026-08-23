@@ -186,7 +186,7 @@ INSERT INTO notices (
     authority, financial_year, lifecycle_status, ingest_channel,
     demand_amount, issues
 ) VALUES (
-    'nt000001-0000-0000-0000-000000000001',
+    'ee000001-0000-0000-0000-000000000001',
     '11111111-1111-1111-1111-111111111111',
     'aa100000-0000-0000-0000-000000000001',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -206,7 +206,7 @@ INSERT INTO notices (
     authority, financial_year, lifecycle_status, ingest_channel,
     demand_amount
 ) VALUES (
-    'nt000001-0000-0000-0000-000000000002',
+    'ee000001-0000-0000-0000-000000000002',
     '11111111-1111-1111-1111-111111111111',
     'aa100000-0000-0000-0000-000000000001',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -225,7 +225,7 @@ INSERT INTO notices (
     authority, assessment_year, lifecycle_status, ingest_channel,
     demand_amount
 ) VALUES (
-    'nt000001-0000-0000-0000-000000000003',
+    'ee000001-0000-0000-0000-000000000003',
     '11111111-1111-1111-1111-111111111111',
     'aa100000-0000-0000-0000-000000000002',
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -245,7 +245,7 @@ INSERT INTO notices (
     authority, financial_year, lifecycle_status, ingest_channel,
     demand_amount, issues
 ) VALUES (
-    'nt000002-0000-0000-0000-000000000001',
+    'ee000002-0000-0000-0000-000000000001',
     '11111111-1111-1111-1111-111111111111',
     'bb100000-0000-0000-0000-000000000001',
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -265,7 +265,7 @@ INSERT INTO notices (
     authority, financial_year, lifecycle_status, ingest_channel,
     demand_amount
 ) VALUES (
-    'nt000003-0000-0000-0000-000000000001',
+    'ee000003-0000-0000-0000-000000000001',
     '11111111-1111-1111-1111-111111111111',
     'cc100000-0000-0000-0000-000000000001',
     'cccccccc-cccc-cccc-cccc-cccccccccccc',
@@ -284,7 +284,7 @@ INSERT INTO notices (
     authority, financial_year, lifecycle_status, ingest_channel,
     demand_amount
 ) VALUES (
-    'nt000003-0000-0000-0000-000000000002',
+    'ee000003-0000-0000-0000-000000000002',
     '11111111-1111-1111-1111-111111111111',
     'cc100000-0000-0000-0000-000000000001',
     'cccccccc-cccc-cccc-cccc-cccccccccccc',
