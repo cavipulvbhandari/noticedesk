@@ -13,6 +13,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_slug ON tenants (slug)
     WHERE slug IS NOT NULL;
 
 ALTER TABLE tenants
+    DROP CONSTRAINT IF EXISTS tenant_slug_format;
+ALTER TABLE tenants
     ADD CONSTRAINT tenant_slug_format
     CHECK (slug IS NULL OR slug ~ '^[a-z0-9]([a-z0-9-]{0,46}[a-z0-9])?$');
 
